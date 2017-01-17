@@ -1,6 +1,3 @@
-require("scripts/instance")
-require("scripts/lemonsquare")
-
 --[[ Classes ]
 map
 map:tile
@@ -45,7 +42,7 @@ Functions:
 		Number sy - scale y.
 	)
 ]]
-local map = instance:class("map",{
+local map = instance:class("map",3)({
 	x = 32,
 	y = 32,
 	size = 32,
@@ -74,11 +71,19 @@ local map = instance:class("map",{
 		self.tile[x+y*self.x] = nil
 	end,
 	update = function(self,dt)
-		local list = {}
-		--self.background:update(dt)
-		--[[for _,v in pairs(self.entity) do
+		-- Background
+		if self.bgImage then
+			self.bgImage:update(dt,self.bgParallax)
+		end
+		-- Entity
+		if not self.entity then
+			self.entity = {}
+		end
+		for _,v in pairs(self.entity) do
 			v:update(dt)
-		end]]
+		end
+		-- Tile
+		local list = {}
 		if not self.tile then
 			self.tile = {}
 		end
@@ -88,22 +93,35 @@ local map = instance:class("map",{
 				v.image:update(dt)
 			end
 		end
-		--self.mask:update(dt)
+		-- Mask
+		if self.maskImage then
+			self.maskImage:update(dt,self.maskParallax)
+		end
 	end,
 	draw = function(self,x,y,angle,sx,sy)
+		-- Background
+		if self.bgImage then
+			self.bgImage:draw(0,0,angle,sx,sy)
+		end
+		-- Entity
+		if not self.entity then
+			self.entity = {}
+		end
+		for _,v in pairs(self.entity) do
+			v:draw(x,y,angle,sx,sy)
+		end
+		-- Tile
 		if not self.tile then
 			self.tile = {}
 		end
-		--[[self.background:draw(0,0,angle,sx,sy)
-		for _,v in pairs(self.entity) do
-			v:draw(x,y,angle,sx,sy)
-		end]]
 		for i,v in pairs(self.tile) do
 			local w = (i%self.x)*self.size+(self.size-v.image.bitmap.w)/2
 			local h = math.floor(i/self.y)*self.size+(self.size-v.image.bitmap.h)/2
 			v.image:draw(w*sx+x,h*sy+y,angle,sx,sy)
 		end
-		--self.mask:draw(0,0,angle,sx,sy)
+		if self.maskImage then
+			self.maskImage:draw(0,0,angle,sx,sy)
+		end
 	end
 })
 
@@ -118,7 +136,7 @@ Properties:
 	Boolean collision - considered in raycasting if true.
 	Number opacity - alpha value (0-1) of the image.
 ]]
-local tile = instance:class("tile",{
+local tile = instance:class("tile",3)({
 	image = nil,
 	visible = true,
 	collision = true,

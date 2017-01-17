@@ -1,5 +1,3 @@
-require("scripts/instance")
-
 local cache = {}
 
 --[[ bitmap ]
@@ -26,7 +24,7 @@ Functions:
 		Integer y - frame y.
 	) - the frame.
 ]]
-local bitmap = instance:class("bitmap",{
+local bitmap = instance:class("bitmap",3)({
 	fx = 0,
 	fy = 0,
 	w = 0,
@@ -89,9 +87,10 @@ Functions:
 		Number sy - scale y.
 	)
 ]]
-local frame = instance:class("frame",{
+local frame = instance:class("frame",3)({
 	frame = nil,
 	bitmap = nil,
+	bob = "HI",
 	draw = function(self,x,y,angle,sx,sy)
 		if self.frame then
 			love.graphics.draw(self.bitmap.image,self.frame,x,y,angle,sx,sy)
@@ -128,8 +127,13 @@ Functions:
 	nil update( - Updates the current state of the animation.
 		Number dt - elapsed time.
 	)
+
+Events:
+	animationStarted() - Fired when the playing the animation.
+	animationEnded() - Fired when the animation has ended. Does not work if 'loop' is true.
+	animationStopped() - Fired when the animation is forcibly stopped (using :pause() or :stop()).
 ]]
-local sprite = frame:class("sprite",{
+local sprite = frame:class("sprite",3)({
 	delay = 1/12,
 	timer = 0,
 	speed = 1,
@@ -183,7 +187,7 @@ local sprite = frame:class("sprite",{
 		end
 		self.frame = self.bitmap.sheet[self.x+self.y*self.bitmap.fx]
 	end,
-	animationStarted = instance:new("event"),
-	animationEnded = instance:new("event"),
-	animationStopped = instance:new("event")
+	animationStarted = instance.event,
+	animationEnded = instance.event,
+	animationStopped = instance.event
 })
