@@ -1,41 +1,67 @@
 local cache = {}
 
---[[ Classes ]
-Bitmap
-Quad > Sprite
+--[[ Dependency ]
+ContentService
 ]]
 
---[[ Bitmap ]
+--[[ Image ]
 Inherits: Instance
+
+Description: Creates an image. Can only be created via 'ContentService:loadImage()'.
+
+Properties:
+	love:Image image - Image source.
+	Color color - Image color.
+	Integer width - Image width.
+	Integer height - Image height.
+
+Functions:
+	nil draw(...) - Draws the image.
+]]
+local Image = Instance:class("Image",4)({
+	image = nil,
+	color = Color:new(255,255,255),
+	width = 0,
+	height = 0,
+	draw = function(self,...)
+		if self.image then
+			love.graphics.setColor(self.color:components())
+			love.graphics.draw(self.image,...)
+		end
+	end
+})
+
+--[[ Bitmap ]
+Inherits: Image
 
 Description: Creates a bitmap sheet, a collection of 'Quad' objects. All bitmaps are stored and recycled.
 			 Starting frame is [0,0].
 
 Properties:
-	Image image (read-only) - image source.
-	Integer fx (read-only) - number of frames from left to right.
-	Integer fy (read-only) - number of frames from top to bottom.
+	Integer fx (read-only) - Number of frames from left to right.
+	Integer fy (read-only) - Number of frames from top to bottom.
 	Table+nil sheet (read-only) - A list of frames of the bitmap. Needs to use 'bake' function first or it will return nil.
 
 Functions:
 	nil bake( - Creates a frame sheet.
 		String source - image path.
-		Integer w - width pixels per frame.
-		Integer h - height pixels per frame.
+		Integer width - width pixels per frame.
+		Integer height - height pixels per frame.
 	)
 
-	nil dump() - Clears the bitmap's global frame sheet cache. Does not remove any existing frame sheets.
 	Quad get( - Gets a frame from the bitmap's frame sheet.
 		Integer x - frame x.
 		Integer y - frame y.
-	) - the frame.
+	) - Returns Quad object.
+
+	Sprite sprite( - Creates an animated image with this bitmap.
+		function prop - Properties for direct changes.
+	) - Returns Sprite object.
 ]]
-local Bitmap = Instance:class("Bitmap",3)({
+local Bitmap = Image:class("Bitmap",3)({
 	fx = 0,
 	fy = 0,
-	w = 0,
-	h = 0,
-	color = Color:new(255,255,255),
+	sheet = {},
 	bake = function(self,source,w,h)
 		if cache[w] and cache[w][h] and cache[w][h][source] then
 			self.image = cache[w][h][source].image
@@ -43,41 +69,42 @@ local Bitmap = Instance:class("Bitmap",3)({
 		else cache[w] = cache[w] or {}
 			cache[w][h] = cache[w][h] or {}
 			cache[w][h][source] = {}
-			self.image = love.graphics.newImage(source)
-			self.image:setFilter("nearest","nearest")
+			self.image = Instance:service("ContentService"):loadImage(source).image
 			local imgw = self.image:getWidth()
 			local imgh = self.image:getHeight()
-			self.w = w or imgw
-			self.h = h or imgh
-			self.fx = math.floor(imgw/self.w)
-			self.fy = math.floor(imgh/self.h)
-			self.sheet = {}
+			self.width = w or imgw
+			self.height = h or imgh
+			self.fx = math.floor(imgw/self.width)
+			self.fy = math.floor(imgh/self.height)
 			for x=0,self.fx-1 do
 				for y=0,self.fy-1 do
-					self.sheet[x+y*self.fx] = love.graphics.newQuad(x*self.w,y*self.h,self.w,self.h,imgw,imgh)
+					self.sheet[x+y*self.fx] = love.graphics.newQuad(x*self.width,y*self.height,self.width,self.height,imgw,imgh)
 				end
 			end
 			cache[w][h][source].image = self.image
 			cache[w][h][source].sheet = self.sheet
 		end
 	end,
-	dump = function(self)
-		cache = {}
-	end,
 	get = function(self,x,y)
 		x = x or 0
 		y = y or 0
 		if not self.image or not self.sheet[x+y*self.fx] then return end
-		local v = Instance:new("Quad")
-		v.frame = self.sheet[x+y*self.fx]
-		v.bitmap = self
 
-		return v
-	end
+		return self:new("Quad",function(t)
+			t.frame = self.sheet[x+y*self.fx]
+			t.bitmap = self
+			t.width = self.width
+			t.height = self.height
+		end)
+	end,
+	sprite = function(self,prop)
+		return self:new("Sprite",prop)
+	end,
+	__draw = true
 })
 
 --[[ Quad ]
-Inherits: Instance
+Inherits: Bitmap
 
 Description: A frame from a bitmap.
 
@@ -94,15 +121,13 @@ Functions:
 		Number sy - scale y.
 	)
 ]]
-local Quad = Instance:class("Quad",3)({
+local Quad = Bitmap:class("Quad",4)({
 	frame = nil,
-	bitmap = nil,
-	color = Color:new(255,255,255),
 	draw = function(self,x,y,angle,sx,sy)
-		if self.frame and self.bitmap then
-			local c = self.color*self.bitmap.color
+		if self.frame then
+			local c = self.color*self.color
 			love.graphics.setColor(c.r,c.g,c.b,c.a)
-			love.graphics.draw(self.bitmap.image,self.frame,x,y,angle,sx,sy)
+			love.graphics.draw(self.image,self.frame,x,y,angle,sx,sy)
 		end
 	end
 })
@@ -148,7 +173,7 @@ Events:
 
 	animationStopped() - Fired when the animation is forcibly stopped (using :pause() or :stop()).
 ]]
-local Sprite = Quad:class("Sprite",3)({
+local Sprite = Quad:class("Sprite",4)({
 	delay = 1/12,
 	timer = 0,
 	speed = 1,

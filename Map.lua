@@ -115,8 +115,8 @@ local Map = Instance:class("Map",3)({
 			self.tile = {}
 		end
 		for i,v in pairs(self.tile) do
-			local w = (i%self.x)*self.size+(self.size-v.image.bitmap.w)/2
-			local h = math.floor(i/self.y)*self.size+(self.size-v.image.bitmap.h)/2
+			local w = (i%self.x)*self.size+(self.size-v.image.bitmap.width)/2
+			local h = math.floor(i/self.y)*self.size+(self.size-v.image.bitmap.height)/2
 			v.image:draw(w*sx+x,h*sy+y,angle,sx,sy)
 		end
 		if self.maskImage then
@@ -131,7 +131,7 @@ Inherits: Instance
 Description: A tile object for the map object.
 
 Properties:
-	sprite image - sprite object.
+	Image image - Image object.
 	Boolean visible - will be drawn if true.
 	Boolean collision - considered in raycasting if true.
 	Number opacity - alpha value (0-1) of the image.

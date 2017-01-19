@@ -34,6 +34,21 @@ local function modify(a,b,modifier)
 	end
 end
 
+--[[ Color ]
+Description: Creates an RGBA color model.
+
+Properties:
+	Number r - red (0-255).
+	Number g - green (0-255).
+	Number b - blue (0-255).
+	Number a - alpha/opacity (0-255). This is automatically set to 255 if not provided.
+			   255 = completely opaque; 0 = completely transparent.
+
+Functions:
+	Number, Number, Number, Number components() - Returns all of the components. Order is R,G,B and A.
+
+	Color clone() - Creates a direct copy of this object.
+]]
 Color = {
 	__add = function(a,b)
 		if type(b) == "table" then
@@ -87,21 +102,6 @@ Color = {
 	end
 }
 
---[[ Color ]
-Description: Creates a new color reference.
-
-Properties:
-	Number r - red (0-255).
-	Number g - green (0-255).
-	Number b - blue (0-255).
-	Number a - alpha/opacity (0-255). This is automatically set to 255 if not provided.
-			   255 = completely opaque; 0 = completely transparent.
-
-Functions:
-	Number, Number, Number, Number components() - Returns all of the components. Order is R,G,B and A.
-
-	Color clone() - Creates a direct copy of this object.
-]]
 function Color:new(r,g,b,a)
 	return setmetatable(
 		{
