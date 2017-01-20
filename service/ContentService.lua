@@ -1,21 +1,5 @@
 local cache = {}
 
---[[ ContentService ]
-Inherits: Instance
-
-Description: Handles new assets and stores them.
-
-Functions:
-	Image loadImage( - Creates or loads an Image object.
-		String source - Source.
-	) - Returns an Image object.
-
-	FontAsset loadFont( - Creates or loads a FontAsset object.
-		String source - Source.
-	) - Returns a FontAsset object.
-
-	FontAsset getFont() - Returns the current font being used.
-]]
 local ContentService = Instance:class("ContentService",2)({
 	loadImage = function(self,source)
 		if not cache.Image then

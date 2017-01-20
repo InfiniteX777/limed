@@ -1,44 +1,3 @@
---[[ limed ]
-
-It's a library.
-
---[ How to Use ]
-
-The base object is 'Instance'. All of which can be accessed through this.
-
-Instance:new(name)
-	- Creates a new object class.
-
-Instance:service(name)
-	- Requests to reference a service class.
-
-You can access reference classes through service classes or their ancestral classes.
-
-ObjectClass:new(name)
-	- Creates a new reference class, assuming the object class is an ancestor of the reference class.
-
-ServiceClass:new(name)
-	- Creates a new reference class.
-
---[ Security Level ]
-
-1 - Root
-	The highest authority of all classes. The only class with this security level is the 'Instance' class.
-
-2 - Service
-	These classes cannot be instantiated, and must use the class itself.
-	You can reference these by using 'Instance:service(name)'.
-
-3 - Object
-	These classes must be instantiated into an object. The class is used as a default reference for all of its objects,
-	and therefore will change all of them when the class is changed.
-
-4 - Reference
-	These classes can only be instantiated by a service class or an ascending object class.
-	They cannot be created by normal means and thus can only be referenced.
-	Reference classes that were instantiated from an ascending object class will inherit their ancestor's custom properties.
-]]
-
 local module = {
 	"math",
 	"reference",
@@ -65,62 +24,6 @@ local function copy(t,to,meta)
 	return meta and n or setmetatable(n,getmetatable(t))
 end
 
---[[ Instance ]
-Description: Root class for all succeeding classes.
-
-Functions:
-	function class( - Creates a new class and inherits the preceding classes.
-					  Calling this function on a descendant class will inherit that class as well.
-		String name - The name of the class. Cannot override existing classes of the same name.
-		Number security - Access level for instantiation.
-	) Instance ( - Returns a callback function.
-		Table t - Collection of properties for the class.
-	) - Returns the class.
-
-	Table event() - Creates an event handler for classes.
-					Returns a table that can handle 'Hook' objects.
-
-	Instance new( - Instantiates a class referencing the given class name.
-		String name - Reference name.
-		Function prop( - Properties for altering the object directly.
-			Instance self - The object being altered.
-		)
-	) - Returns an instantiated class, or an object.
-
-	Instance service( - Returns a class with a security level of 2.
-		String name - The name of the class.
-	) - Returns a security level 2 class, or a service class.
-
-	String name() - Returns the name of the class.
-
-	Boolean is( - Checks if the class has the same name, or is inheriting the given class.
-		String name - Reference name.
-	) - Returns true if the class or one of the classes it inherits has the same name.
-
-	Integer security() - Returns the security level of the class.
-
-	nil destroy() - Placeholder for the destroy function. It is encouraged to override this function when creating a new class.
-					This function allows the class to change anything before being deleted.
-					When wanting to get rid of an instantiated class, it is recommended to call this function.
-
-	nil update( - Placeholder for the update function. It is encouraged to override this function when creating a new class.
-				  This function allows the class to be changed dynamically.
-		Number dt - Elapsed time.
-	)
-
-	nil draw( - Placeholder for the draw function. It is encouraged to override this function when creating a new class.
-				This function allows the class to be drawn.
-		Integer x - Pixel from left to right.
-		Integer y - Pixel from top to bottom.
-		Number angle - image rotation.
-		Number sx - scale x.
-		Number sy - scale y.
-	)
-
-	Instance construct() - Placeholder for the construct function. It is encouraged to override this function when creating a new class.
-						   This allows the ability to change the instantiated class before being referenced.
-						   When referencing this callback function, the name must be 'new' instead of 'construct'.
-]]
 function Instance:class(name,security)
 	if not class[name] then
 		security = security or 3
@@ -209,23 +112,6 @@ function Instance:class(name,security)
 	end
 end
 
---[[ Event ]
-Inherits: Instance
-
-Description: Allows the option to add 'Hooks' and be fired all at once.
-
-Functions:
-	nil fire( - Fires all connected hooks.
-		Instance source, - The source of the event.
-		... - Passed parameters.
-	)
-	Hook connect( - Connects a hook to this event.
-		function func - callback function to be executed everytime 'fire' is called.
-	) - returns a hook object.
-	nil disconnect( - disconnects a hook from this event.
-		hook hook - hook object.
-	)
-]]
 function Instance:event()
 	return {
 		hook = {},

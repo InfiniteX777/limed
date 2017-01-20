@@ -80,31 +80,6 @@ Vector2 = {
 	end
 }
 
---[[ Vector2 ]
-Creates a reference of 2 vectors.
-
-Properties:
-	Number x - vector x.
-	Number y - vector y.
-
-Functions:
-	Number dot( - Dot product from this vector to the provided scalar Vector2.
-		Vector2 b - Scalar Vector2.
-	) - Returns the dot product.
-
-	Vector2 lerp( - Linear interpolation. Transitions the current Vector2 to the provided Vector2 linearly.
-		Vector2 b - End point.
-		Number d - Delta scale (0-1.0).
-	) - Returns a*(1-d)+b*d
-
-	Vector2, Vector2 rect( - Returns 2 new Vector2s arranged so that it forms a proper rectangle.
-		Vector2 b - Reference Vector2.
-	) - Returns two Vector2s. The first is the top-left point for the rectangle, and the second is the bottom-right point.
-
-	Number, Number components() - Returns all of the components. Order is X and Y.
-
-	Vector2 clone() - Creates a direct copy of this object.
-]]
 function Vector2:new(x,y)
 	return setmetatable(
 		{

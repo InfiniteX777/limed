@@ -1,36 +1,3 @@
---[[ UI ]
-Inherits: Instance
-
-Description: Contains the GUI elements.
-
-Properties:
-	Table elements - Collection of UI objects.
-
-Functions:
-	nil add( - Adds a new UI element. Only instances that inherits this class is allowed.
-		UI v - Element.
-	)
-
-	nil rem( - Removes the UI element.
-		UI v - Element.
-	)
-
-	nil update( - Updates all of the UI elements.
-		Number dt - Elapsed time.
-	)
-
-	nil draw(...) - Draws all of the UI elements.
-
-Events:
-	elementAdded( - Fired when a new element is added.
-		UI v - Element.
-	)
-
-	elementRemoved( - Fired when an element belonging to this container has been removed.
-					  Does not fire when a descendant (an element inside a container that is inside this container) is removed.
-		UI v - Element.
-	)
-]]
 local UI = Instance:class("UI",3)({
 	elements = {},
 	add = function(self,v)
@@ -76,38 +43,6 @@ local UI = Instance:class("UI",3)({
 	elementRemoved = Instance.event
 })
 
---[[ Frame ]
-Inherits: UI
-
-Description: A rigid rectangular body.
-
-Properties:
-	Table position{ - Starting position from top-left.
-		Vector2 offset - Offset in pixels.
-		Vector2 scale - Offset by screen size.
-	}
-	Number rotation - Angle.
-	Table size{ - Size of the rectangle.
-		Vector2 offset - Size in pixels.
-		Vector2 scale - Size by screen size.
-	}
-	Color fillColor - Fill color of the rectangle.
-	Color outlineColor - Outline color of the rectangle.
-	Image nil - Image of the rectangle. Image is stretched according to the Frame's size.
-	Boolean hover - If the mouse is hovering over the Frame.
-
-Functions:
-	Vector2, Vector2 rect() - Returns a proper rectangle from the Frame's size and position.
-							  First point is the top-left, the second is bottom-right.
-
-Events:
-	mouseEntered(...) - Fired when the mouse enters the Frame.
-	mouseMoved(...) - Fired when the mouse is moving inside the Frame.
-	mouseLeave(...) - Fired when the mouse leaves the Frame.
-	mouseDown(...) - Fired when any of the mouse buttons are pressed inside the Frame.
-	mouseUp(...) - Fired when any of the mouse buttons were released inside the Frame.
-	mouseWheel(...) - Fired when the mouse wheel is moved while inside the Frame.
-]]
 local Frame = UI:class("Frame",3)({
 	position = {
 		offset = Vector2:new(),
@@ -224,21 +159,6 @@ local alignment = {
 	end
 }
 
---[[ Label ]
-Inherits: Frame
-
-Description: A Frame with a text.
-
-Properties:
-	String text - Text.
-	String textAlign - alignment of the text inside the Frame.
-					   "topleft",	"topcenter",	"topright"
-					   "middleleft","middlecenter",	"middleright"
-					   "bottomleft","bottomcenter",	"bottomright"
-	Color textColor - Color of the text.
-	Boolean textWrap - Whether the text must remain inside the Frame or not.
-	FontAsset font - Font style.
-]]
 local Label = Frame:class("Label",3)({
 	text = "",
 	textAlign = "middlecenter",
@@ -250,12 +170,13 @@ local Label = Frame:class("Label",3)({
 	end,
 	draw = function(self,x,y,angle,...)
 		local a,b = self:rect()
+		self.font.text = self.text
 		self.font.color = self.textColor ~= self.font.color and self.textColor:clone() or self.font.color
 		self.font.align = self.textAlign
 		self.font.wrap = self.textWrap and (b-a).x
 		local pos = alignment[self.textAlign](a,b-a)
 		love.graphics.rotate(angle+self.rotation)
-		self.font:draw(self.text,pos.x,pos.y,0,...)
+		self.font:draw(pos.x,pos.y,0,...)
 		love.graphics.origin()
 	end
 })

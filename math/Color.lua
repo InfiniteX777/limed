@@ -13,7 +13,7 @@ end
 
 local function modify(a,b,modifier)
 	local r1,g1,b1,a1 = a.r/255,a.g/255,a.b/255,a.a/255
-	local r2,g2,b2,a2 = b,b,b,b
+	local r2,g2,b2,a2 = b,b,b,1
 	if type(b) == "table" then
 		r2,g2,b2,a2 = b.r/255,b.g/255,b.b/255,b.a/255
 	end
@@ -34,33 +34,18 @@ local function modify(a,b,modifier)
 	end
 end
 
---[[ Color ]
-Description: Creates an RGBA color model.
-
-Properties:
-	Number r - red (0-255).
-	Number g - green (0-255).
-	Number b - blue (0-255).
-	Number a - alpha/opacity (0-255). This is automatically set to 255 if not provided.
-			   255 = completely opaque; 0 = completely transparent.
-
-Functions:
-	Number, Number, Number, Number components() - Returns all of the components. Order is R,G,B and A.
-
-	Color clone() - Creates a direct copy of this object.
-]]
 Color = {
 	__add = function(a,b)
 		if type(b) == "table" then
 			return Color:new(clamp(a.r+b.r,a.g+b.g,a.b+b.b,a.a+b.a))
 		end
-		return Color:new(clamp(a.r+b,a.g+b,a.b+b,a.a+b))
+		return Color:new(clamp(a.r+b,a.g+b,a.b+b,a.a))
 	end,
 	__sub = function(a,b)
 		if type(b) == "table" then
 			return Color:new(clamp(a.r-b.r,a.g-b.g,a.b-b.b,a.a-b.a))
 		end
-		return Color:new(clamp(a.r-b,a.g-b,a.b-b,a.a-b))
+		return Color:new(clamp(a.r-b,a.g-b,a.b-b,a.a))
 	end,
 	__mul = function(a,b)
 		return Color:new(modify(a,b,"mul"))
@@ -68,17 +53,11 @@ Color = {
 	__div = function(a,b)
 		return Color:new(modify(a,b,"div"))
 	end,
-	__mod = function(a,b)
-		if type(b) == "table" then
-			return Color:new(clamp(a.r%b.r,a.g%b.g,a.b%b.b,a.a%b.a))
-		end
-		return Color:new(clamp(a.r%b,a.g%b,a.b%b,a.a%b))
-	end,
 	__pow = function(a,b)
 		if type(b) == "table" then
 			return Color:new(clamp(a.r^b.r,a.g^b.g,a.b^b.b,a.a^b.a))
 		end
-		return Color:new(clamp(a.r^b,a.g^b,a.b^b,a.a^b))
+		return Color:new(clamp(a.r^b,a.g^b,a.b^b,a.a))
 	end,
 	__eq = function(a,b)
 		if type(b) == "table" then

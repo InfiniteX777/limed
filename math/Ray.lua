@@ -1,27 +1,3 @@
---[[ Ray ]
-Description: An invisible line to intersect objects with.
-
-Properties:
-	Vector2 o - origin. Starting point of the ray.
-	Vector2 d - direction. Directional vector of the ray.
-
-Functions:
-	Vector2 closest( - Returns the closest point of the ray's direction to the given point.
-		Vector2 v - reference point.
-	) - Returns the closest point.
-
-	Vector2+nil circleIntersect( - Tries to intersect a circle with a ray.
-		Number dis - total length of the ray.
-		Vector2 v - position of the circle.
-		Number r - radius of the circle.
-	) - Returns the point if it is intersected, otherwise nil.
-
-	Tile+nil, Vector2 hit( - Simulates the ray in a map's space.
-		map map - the map being simulated.
-		Number distance - Total length of the ray towards the directional vector.
-	) - Returns the tile that was intersected and the point of intersection.
-		'Tile' is nil and the point is at the end of the ray if none are intersected.
-]]
 Ray = {}
 Ray.__index = Ray
 
