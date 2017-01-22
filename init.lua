@@ -1,5 +1,5 @@
 local module = {
-	"math",
+	"api",
 	"reference",
 	"object",
 	"service"

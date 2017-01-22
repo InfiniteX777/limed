@@ -10,6 +10,9 @@ local Map = Instance:class("Map",3)({
 		image = nil,
 		parallax = 10
 	},
+	entity = {},
+	tile = {},
+	projectile = {},
 	getTile = function(self,x,y)
 		if self.tile then
 			return self.tile[x+y*self.x]
@@ -59,29 +62,31 @@ local Map = Instance:class("Map",3)({
 		end
 	end,
 	draw = function(self,x,y,angle,sx,sy)
+		local pos,size = Vector2:new(x,y),Vector2:new(self.x,self.y)*self.size
+		pos = (pos+size/2):rotateToVectorSpace(Vector2:new(),-angle)-size/2
+		x,y = pos.x,pos.y
 		-- Background
 		if self.background.image then
-			self.background.image:draw(0,0,angle,sx,sy)
+			love.graphics.rotate(angle)
+			self.background.image:draw(0,0,0,sx,sy)
 		end
 		-- Entity
-		if not self.entity then
-			self.entity = {}
-		end
 		for _,v in pairs(self.entity) do
-			v:draw(x,y,angle,sx,sy)
+			love.graphics.rotate(angle)
+			v:draw(x,y,0,sx,sy)
 		end
 		-- Tile
-		if not self.tile then
-			self.tile = {}
-		end
 		for i,v in pairs(self.tile) do
 			local w = (i%self.x)*self.size+(self.size-v.image.width)/2
 			local h = math.floor(i/self.y)*self.size+(self.size-v.image.height)/2
-			v.image:draw(w*sx+x,h*sy+y,angle,sx,sy)
+			love.graphics.rotate(angle)
+			v.image:draw(w*sx+x,h*sy+y,0,sx,sy)
 		end
 		if self.mask.image then
-			self.mask.image:draw(0,0,angle,sx,sy)
+			love.graphics.rotate(angle)
+			self.mask.image:draw(0,0,0,sx,sy)
 		end
+		love.graphics.origin()
 	end
 })
 

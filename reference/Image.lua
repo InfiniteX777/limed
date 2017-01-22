@@ -37,10 +37,14 @@ local Image = Instance:class("Image",4)({
 			t.endFrame = t.fx
 		end)
 	end,
-	draw = function(self,...)
+	draw = function(self,x,y,angle,...)
 		if self.image then
 			love.graphics.setColor(self.color:components())
-			love.graphics.draw(self.image,...)
+			love.graphics.rotate(angle)
+			local pos,size = Vector2:new(x,y),Vector2:new(self.width,self.height)
+			pos = (pos+size/2):rotateToVectorSpace(Vector2:new(),-angle)-size/2
+			love.graphics.setColor(self.color:components())
+			love.graphics.draw(self.image,pos.x,pos.y,0,...)
 		end
 	end
 })
@@ -51,7 +55,7 @@ local Quad = Image:class("Quad",4)({
 	fy = 0,
 	x = 0,
 	y = 0,
-	draw = function(self,x,y,angle,sx,sy)
+	draw = function(self,x,y,angle,...)
 		if self.image and self.x < self.fx and self.y < self.fy then
 			if not self.frame then
 				local t = lemon.tableInit(cache,self.image,self.width,self.height,self.x)
@@ -68,7 +72,11 @@ local Quad = Image:class("Quad",4)({
 				self.frame = t[self.y]
 			end
 			love.graphics.setColor(self.color:components())
-			love.graphics.draw(self.image,self.frame,x,y,angle,sx,sy)
+			love.graphics.rotate(angle)
+			local pos,size = Vector2:new(x,y),Vector2:new(self.width,self.height)
+			pos = (pos+size/2):rotateToVectorSpace(Vector2:new(),-angle)-size/2
+			love.graphics.draw(self.image,self.frame,pos.x,pos.y,0,...)
+			love.graphics.origin()
 		end
 	end,
 	__draw = true

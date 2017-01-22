@@ -1,10 +1,8 @@
 local hori = {
 	center = function(pos,screen)
-		wrap = wrap or 0
 		return Vector2:new(pos.x-screen/2,pos.y)
 	end,
 	right = function(pos,screen)
-		wrap = wrap or 0
 		return Vector2:new(pos.x-screen,pos.y)
 	end
 }
@@ -46,23 +44,22 @@ local FontAsset = Instance:class("FontAsset",4)({
 	color = Color:new(),
 	wrap = nil,
 	draw = function(self,x,y,angle,sx,sy)
-		local screen = love.graphics.getDimensions()
+		local screen = love.graphics.getDimensions()/(sx^2)
 		local font = self.font
+		local height = font:getHeight()*sy
 		local pos,direction,align = alignment[self.align](
-			Vector2:new(x,y),
+			Vector2:new(x,y):rotateToVectorSpace(Vector2:new(),-angle),
 			screen
 		)
-		local height = font:getHeight()
 		love.graphics.setColor(self.color:components())
+		love.graphics.rotate(angle)
 
 		if self.wrap then
-			local _,text = font:getWrap(self.text,self.wrap)
-			direction = #text*direction
-			for i,v in pairs(text) do
-				love.graphics.printf(v,pos.x,pos.y+direction*height,screen,align,angle,sx)
-				direction = direction+1
-			end
-		else love.graphics.printf(self.text,pos.x,pos.y+height*direction,screen,align,angle,sy)
+			local _,list = font:getWrap(self.text,self.wrap)
+			direction = #list*direction
+			love.graphics.printf(table.concat(list,"\n"),pos.x,pos.y+direction*height,screen,align,0,sx,sy)
+		else love.graphics.printf(self.text,pos.x,pos.y+height*direction,screen,align,0,sx,sy)
 		end
+		love.graphics.origin()
 	end
 })

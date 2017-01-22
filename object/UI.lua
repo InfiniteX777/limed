@@ -44,15 +44,8 @@ local UI = Instance:class("UI",3)({
 })
 
 local Frame = UI:class("Frame",3)({
-	position = {
-		offset = Vector2:new(),
-		scale = Vector2:new()
-	},
-	rotation = 0,
-	size = {
-		offset = Vector2:new(),
-		scale = Vector2:new()
-	},
+	offset = Rect:new(),
+	scale = Rect:new(),
 	fillColor = Color:new(255,255,255),
 	outlineColor = Color:new(),
 	image = nil,
@@ -60,8 +53,8 @@ local Frame = UI:class("Frame",3)({
 	new = function(self)
 		local InputService = Instance:service("InputService")
 		self.mouseMovedHook = InputService.mouseMoved:connect(function(x,y,...)
-			local a,b = self:rect()
-			if (a-b).mag > 0 then
+			local rect = self:rect()
+			if rect.area > 0 then
 				if x >= a.x and x <= b.x and y >= a.y and y <= b.y then
 					if not self.hover then
 						self.hover = true
@@ -92,9 +85,11 @@ local Frame = UI:class("Frame",3)({
 	end,
 	rect = function(self)
 		local screen = Vector2:new(love.graphics.getDimensions())
-		local position = self.position.offset+self.position.scale*screen
-		local size = self.size.offset+self.size.scale*screen
-		return position:rect(size+position)
+		return Rect:new(
+			self.offset.position+self.scale.position*screen,
+			self.offset.size+self.scale.size*screen,
+			self.offset.rotation-self.scale.rotation
+		)
 	end,
 	destroy = function(self)
 		for _,v in pairs({"Moved","Down","Up","Wheel"}) do
@@ -104,15 +99,18 @@ local Frame = UI:class("Frame",3)({
 		end
 	end,
 	draw = function(self,x,y,angle,sx,sy)
-		local a,b = self:rect()
-		b = b-a
-		a = a+Vector2:new(x,y)
-		b = b+Vector2:new(x,y)
-		love.graphics.rotate(angle+self.rotation)
+		local rect = self:rect()
+		local rot = angle+rect.rotation
+		rect.position = rect.center+Vector2:new(x,y)
+		rect.position = rect.position:rotateToVectorSpace(Vector2:new(),-rot)
+		rect.position = rect.position-rect.size/2
+		local a,b = rect.position,rect.size
+
+		love.graphics.rotate(rot)
 		love.graphics.setColor(self.fillColor:components())
-		love.graphics.rectangle("fill",a.x,a.y,b.x,b.y)
+		love.graphics.rectangle("fill",a.x,a.y,b.x*sx,b.y*sy)
 		love.graphics.setColor(self.outlineColor:components())
-		love.graphics.rectangle("line",a.x,a.y,b.x,b.y)
+		love.graphics.rectangle("line",a.x,a.y,b.x*sx,b.y*sy)
 		if self.image then
 			local width,height = self.image.width,self.image.height
 			width = b.x/width
@@ -168,15 +166,14 @@ local Label = Frame:class("Label",3)({
 	new = function(self)
 		self.font = Instance:service("ContentService"):getFont()
 	end,
-	draw = function(self,x,y,angle,...)
-		local a,b = self:rect()
+	draw = function(self,x,y,angle,sx,sy,...)
+		local rect = self:rect()
+		local rot = angle+rect.rotation
 		self.font.text = self.text
 		self.font.color = self.textColor ~= self.font.color and self.textColor:clone() or self.font.color
 		self.font.align = self.textAlign
-		self.font.wrap = self.textWrap and (b-a).x
-		local pos = alignment[self.textAlign](a,b-a)
-		love.graphics.rotate(angle+self.rotation)
-		self.font:draw(pos.x,pos.y,0,...)
-		love.graphics.origin()
+		self.font.wrap = self.textWrap and rect.size.x or nil
+		local pos = alignment[self.textAlign](rect.position,rect.size*Vector2:new(1,sy)):rotateToVectorSpace(rect.center,rot)
+		self.font:draw(pos.x,pos.y,rot,sx,sy,...)
 	end
 })
