@@ -127,6 +127,7 @@ function Rect:new(position,size,rotation)
 			return true
 		end,
 		components = function(self)
+			return self.dposition,self.dsize,self.drotation
 		end,
 		clone = function(self)
 			return Rect:new(self.dposition,self.dsize,self.drotation)
