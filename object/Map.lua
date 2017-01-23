@@ -93,5 +93,6 @@ local Map = Instance:class("Map",3)({
 local Tile = Instance:class("Tile",3)({
 	image = nil,
 	visible = true,
-	collision = true
+	collision = true,
+	friction = 0.4
 })

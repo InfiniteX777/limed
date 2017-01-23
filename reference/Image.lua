@@ -1,3 +1,5 @@
+local floor,max,min = math.floor,math.max,math.min
+
 local cache = {}
 
 local Image = Instance:class("Image",4)({
@@ -6,10 +8,10 @@ local Image = Instance:class("Image",4)({
 	width = 0,
 	height = 0,
 	bake = function(self,w,h)
-		local fx,fy = math.floor(self.width/w),math.floor(self.height/h)
+		local fx,fy = floor(self.width/w),floor(self.height/h)
 		for x=0,fx-1 do
 			for y=0,fy-1 do
-				local t = lemon.tableInit(cache,self.image,w,h,x)
+				local t = lemon.table.init(cache,self.image,w,h,x)
 				if not t[y] then
 					t[y] = love.graphics.newQuad(x*w,y*h,w,h,self.width,self.height)
 				end
@@ -22,8 +24,8 @@ local Image = Instance:class("Image",4)({
 			t.height = h
 			t.x = x or 0
 			t.y = y or 0
-			t.fx = math.floor(self.width/w)
-			t.fy = math.floor(self.height/h)
+			t.fx = floor(self.width/w)
+			t.fy = floor(self.height/h)
 		end)
 	end,
 	sprite = function(self,w,h,x,y)
@@ -32,8 +34,8 @@ local Image = Instance:class("Image",4)({
 			t.height = h
 			t.x = x or 0
 			t.y = y or 0
-			t.fx = math.floor(self.width/w)
-			t.fy = math.floor(self.height/h)
+			t.fx = floor(self.width/w)
+			t.fy = floor(self.height/h)
 			t.endFrame = t.fx
 		end)
 	end,
@@ -58,7 +60,7 @@ local Quad = Image:class("Quad",4)({
 	draw = function(self,x,y,angle,...)
 		if self.image and self.x < self.fx and self.y < self.fy then
 			if not self.frame then
-				local t = lemon.tableInit(cache,self.image,self.width,self.height,self.x)
+				local t = lemon.table.init(cache,self.image,self.width,self.height,self.x)
 				if not t[self.y] then
 					t[self.y] = love.graphics.newQuad(
 						self.x*self.width,
@@ -106,12 +108,12 @@ local Sprite = Quad:class("Sprite",4)({
 		self.animationStopped:fire()
 	end,
 	seek = function(self,x,y)
-		self.x = math.max(self.startFrame,math.min(x or self.x,self.endFrame))
+		self.x = max(self.startFrame,min(x or self.x,self.endFrame))
 		self.y = y or self.y
 	end,
 	update = function(self,dt)
-		self.startFrame = math.max(0,math.min(self.startFrame,self.fx-1))
-		self.endFrame = math.max(self.startFrame,math.min(self.endFrame,self.fx-1))
+		self.startFrame = max(0,min(self.startFrame,self.fx-1))
+		self.endFrame = max(self.startFrame,min(self.endFrame,self.fx-1))
 		if self.playing and self.delay > 0 then
 			self.timer = self.timer+dt*self.speed
 			if self.timer >= self.delay then

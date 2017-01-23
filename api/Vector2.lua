@@ -1,4 +1,6 @@
-Vector2 = {
+local max,min,cos,sin = math.max,math.min,math.cos,math.sin
+
+Vector2 = Instance:api({
 	__add = function(a,b)
 		if type(b) == "table" then
 			return Vector2:new(a.x+b.x,a.y+b.y)
@@ -12,6 +14,9 @@ Vector2 = {
 		return Vector2:new(a.x-b,a.y-b)
 	end,
 	__mul = function(a,b)
+		if type(a) == "number" then
+			a = Vector2:new(a,a)
+		end
 		if type(b) == "table" then
 			return Vector2:new(a.x*b.x,a.y*b.y)
 		end
@@ -78,45 +83,45 @@ Vector2 = {
 			rawset(self,"mag",nil)
 			rawset(self,"perpendicular",nil)
 		end
+		if self.__callback then
+			self.__callback(self,i,v)
+		end
 	end,
 	__tostring = function(self)
 		return self.dx..", "..self.dy
 	end
-}
-
-function Vector2:new(x,y)
-	return setmetatable({
-		dx = x or 0,
-		dy = y or 0,
-		dot = function(a,b)
-			return a.dx*b.dx+a.dy*b.dy
-		end,
-		cross = function(a,b)
-			return a.dx*b.dy-a.dy*b.dx
-		end,
-		lerp = function(a,b,d)
-			d = math.max(0,math.min(d or 0,1))
-			return a*(1-d)+b*d
-		end,
-		rect = function(a,b)
-			local v1,v2 = b.x < a.x, b.y < a.y
-			local c,d = Vector2:new(v1 and b.x or a.x,v2 and b.y or a.y),Vector2:new(v1 and a.x or b.x,v2 and a.y or b.y)
-			return Rect:new(c,d-c)
-		end,
-		rotateToVectorSpace = function(a,b,r)
-			return Vector2:new(
-				b.x + (a.x-b.x)*math.cos(r) - (a.y-b.y)*math.sin(r),
-				b.y + (a.x-b.x)*math.sin(r) + (a.y-b.y)*math.cos(r)
-			)
-		end,
-		components = function(self)
-			return self.dx,self.dy
-		end,
-		clone = function(self)
-			return Vector2:new(self.dx,self.dy)
-		end,
-		type = function()
-			return "Vector2"
-		end
-	},Vector2)
-end
+},{
+	dot = function(a,b)
+		return a.dx*b.dx+a.dy*b.dy
+	end,
+	cross = function(a,b)
+		return a.dx*b.dy-a.dy*b.dx
+	end,
+	lerp = function(a,b,d)
+		d = max(0,min(d or 0,1))
+		return a*(1-d)+b*d
+	end,
+	rect = function(a,b)
+		local v1,v2 = b.x < a.x, b.y < a.y
+		local c,d = Vector2:new(v1 and b.x or a.x,v2 and b.y or a.y),Vector2:new(v1 and a.x or b.x,v2 and a.y or b.y)
+		return Rect:new(c,d-c)
+	end,
+	rotateToVectorSpace = function(a,b,r)
+		return Vector2:new(
+			b.x + (a.x-b.x)*cos(r) - (a.y-b.y)*sin(r),
+			b.y + (a.x-b.x)*sin(r) + (a.y-b.y)*cos(r)
+		)
+	end,
+	components = function(self)
+		return self.dx,self.dy
+	end,
+	clone = function(self)
+		return Vector2:new(self.dx,self.dy)
+	end,
+	type = function()
+		return "Vector2"
+	end
+},function(self,x,y)
+	self.x = x or 0
+	self.y = y or 0
+end)

@@ -1,13 +1,15 @@
+local floor = math.floor
+
 local properties = {"r","g","b","a"}
 for k,v in pairs(properties) do
 	properties[v] = true
 end
 
 local function clamp(r,g,b,a)
-	r = r and lemon.clamp(math.floor(r)) or nil
-	g = g and lemon.clamp(math.floor(g)) or nil
-	b = b and lemon.clamp(math.floor(b)) or nil
-	a = a and lemon.clamp(math.floor(a)) or nil
+	r = r and lemon.clamp(floor(r)) or nil
+	g = g and lemon.clamp(floor(g)) or nil
+	b = b and lemon.clamp(floor(b)) or nil
+	a = a and lemon.clamp(floor(a)) or nil
 	return r,g,b,a
 end
 
@@ -34,7 +36,7 @@ local function modify(a,b,modifier)
 	end
 end
 
-Color = {
+Color = Instance:api({
 	__add = function(a,b)
 		if type(b) == "table" then
 			return Color:new(clamp(a.r+b.r,a.g+b.g,a.b+b.b,a.a+b.a))
@@ -79,22 +81,16 @@ Color = {
 	__tostring = function(self)
 		return self.dr..", "..self.dg..", "..self.db..", "..self.da
 	end
-}
-
-function Color:new(r,g,b,a)
-	return setmetatable(
-		{
-			dr = r or 0,
-			dg = g or 0,
-			db = b or 0,
-			da = a or 255,
-			components = function(self)
-				return self.dr,self.dg,self.db,self.da
-			end,
-			clone = function(self)
-				return Color:new(self.dr,self.dg,self.db,self.da)
-			end
-		},
-		Color
-	)
-end
+},{
+	components = function(self)
+		return self.dr,self.dg,self.db,self.da
+	end,
+	clone = function(self)
+		return Color:new(self.dr,self.dg,self.db,self.da)
+	end
+},function(self,r,g,b,a)
+	self.r = r or 0
+	self.g = g or 0
+	self.b = b or 0
+	self.a = a or 255
+end)

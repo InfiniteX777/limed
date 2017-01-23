@@ -12,18 +12,6 @@ local class = {}
 Instance = {}
 Instance.__index = Instance
 
-local function copy(t,to,meta)
-	local n = to or {}
-	for k,v in pairs(t) do
-		if type(v) == "table" and v ~= t then
-			n[k] = copy(v)
-		else n[k] = v
-		end
-	end
-
-	return meta and n or setmetatable(n,getmetatable(t))
-end
-
 function Instance:class(name,security)
 	if not class[name] then
 		security = security or 3
@@ -48,7 +36,7 @@ function Instance:class(name,security)
 					if v == Instance.event then
 						n[k] = v()
 					elseif type(v) == "table" and v ~= t then
-						n[k] = copy(v)
+						n[k] = lemon.table.copy(v,nil,true)
 					end
 				end
 				if construct then
@@ -67,7 +55,7 @@ function Instance:class(name,security)
 						return class[ref]:construct(function(n)
 							local meta = getmetatable(t)
 							setmetatable(t,{})
-							copy(t,n,true)
+							lemon.table.copy(t,n)
 							setmetatable(t,meta)
 							if prop then
 								prop(n)
@@ -80,7 +68,7 @@ function Instance:class(name,security)
 			t.clone = function(t,prop)
 				local meta = getmetatable(t)
 				setmetatable(t,{})
-				local n = setmetatable(copy(t),meta)
+				local n = setmetatable(lemon.table.copy(t,nil,true),meta)
 				setmetatable(t,meta)
 				if prop then
 					prop(n)
@@ -110,6 +98,19 @@ function Instance:class(name,security)
 		end
 	else print("Class '"..name.."' already exists!")
 	end
+end
+
+function Instance:api(meta,func,const)
+	if const then
+		function meta:new(...)
+			local t = setmetatable(func and lemon.table.copy(func) or {},meta)
+			const(t,...)
+
+			return t
+		end
+	end
+
+	return meta
 end
 
 function Instance:event()

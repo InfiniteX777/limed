@@ -55,7 +55,7 @@ local Frame = UI:class("Frame",3)({
 		self.mouseMovedHook = InputService.mouseMoved:connect(function(x,y,...)
 			local rect = self:rect()
 			if rect.area > 0 then
-				if x >= a.x and x <= b.x and y >= a.y and y <= b.y then
+				if x >= rect.position.x and x <= rect.position.x+rect.size.x and y >= rect.position.y and y <= rect.position.y+rect.size.y then
 					if not self.hover then
 						self.hover = true
 						self.mouseEntered:fire(x,y,...)
@@ -174,6 +174,6 @@ local Label = Frame:class("Label",3)({
 		self.font.align = self.textAlign
 		self.font.wrap = self.textWrap and rect.size.x or nil
 		local pos = alignment[self.textAlign](rect.position,rect.size*Vector2:new(1,sy)):rotateToVectorSpace(rect.center,rot)
-		self.font:draw(pos.x,pos.y,rot,sx,sy,...)
+		self.font:draw(x+pos.x,y+pos.y,rot,sx,sy,...)
 	end
 })
