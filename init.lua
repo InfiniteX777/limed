@@ -77,8 +77,8 @@ function Instance:class(name,security)
 			end
 			local destroy = t.destroy or Instance.destroy
 			t.destroy = function(t)
-				self.destroy(t)
 				destroy(t)
+				self.destroy(t)
 			end
 
 			local update = t.update or Instance.update
@@ -139,7 +139,8 @@ function Instance:event()
 		end,
 		disconnectAll = function(self)
 			self.hook = {}
-		end
+		end,
+		__event = true
 	}
 end
 
@@ -171,7 +172,14 @@ function Instance:security()
 	return 1
 end
 
-function Instance:destroy() end
+function Instance:destroy()
+	for k,v in pairs(self) do
+		if type(v) == "table" and v.__event then
+			v:disconnectAll()
+		end
+		self[k] = nil
+	end
+end
 
 function Instance:update() end
 
