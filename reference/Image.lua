@@ -7,6 +7,7 @@ local Image = Instance:class("Image",4)({
 	color = Color:new(255,255,255),
 	width = 0,
 	height = 0,
+	flip = false,
 	bake = function(self,w,h)
 		local fx,fy = floor(self.width/w),floor(self.height/h)
 		for x=0,fx-1 do
@@ -39,14 +40,18 @@ local Image = Instance:class("Image",4)({
 			t.endFrame = t.fx
 		end)
 	end,
-	draw = function(self,x,y,angle,...)
+	draw = function(self,x,y,angle,sx,sy,...)
 		if self.image then
+			love.graphics.push()
 			love.graphics.setColor(self.color:components())
-			love.graphics.rotate(angle)
-			local pos,size = Vector2:new(x,y),Vector2:new(self.width,self.height)
-			pos = (pos+size/2):rotateToVectorSpace(Vector2:new(),-angle)-size/2
-			love.graphics.setColor(self.color:components())
-			love.graphics.draw(self.image,pos.x,pos.y,0,...)
+			local pos,size = Vector2:new(x,y),Vector2:new(self.width*sx,self.height*sy)
+			if self.flip then
+				sx = -sx
+				pos.x = pos.x+size.x
+			end
+			pos = pos:rotateToVectorSpace(pos+size/2,angle)
+			love.graphics.draw(self.image,pos.x,pos.y,angle,sx,sy,...)
+			love.graphics.pop()
 		end
 	end
 })
@@ -57,7 +62,7 @@ local Quad = Image:class("Quad",4)({
 	fy = 0,
 	x = 0,
 	y = 0,
-	draw = function(self,x,y,angle,...)
+	draw = function(self,x,y,angle,sx,sy,...)
 		if self.image and self.x < self.fx and self.y < self.fy then
 			if not self.frame then
 				local t = lemon.table.init(cache,self.image,self.width,self.height,self.x)
@@ -73,12 +78,16 @@ local Quad = Image:class("Quad",4)({
 				end
 				self.frame = t[self.y]
 			end
+			love.graphics.push()
 			love.graphics.setColor(self.color:components())
-			love.graphics.rotate(angle)
-			local pos,size = Vector2:new(x,y),Vector2:new(self.width,self.height)
-			pos = (pos+size/2):rotateToVectorSpace(Vector2:new(),-angle)-size/2
-			love.graphics.draw(self.image,self.frame,pos.x,pos.y,0,...)
-			love.graphics.origin()
+			local pos,size = Vector2:new(x,y),Vector2:new(self.width*sx,self.height*sy)
+			if self.flip then
+				sx = -sx
+				pos.x = pos.x+size.x
+			end
+			pos = pos:rotateToVectorSpace(pos+size/2,angle)
+			love.graphics.draw(self.image,self.frame,pos.x,pos.y,angle,sx,sy,...)
+			love.graphics.pop()
 		end
 	end,
 	__draw = true
