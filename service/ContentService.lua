@@ -24,6 +24,7 @@ local ContentService = Instance:class("ContentService",2)({
 		end
 		if not cache.Font[size][source] then
 			cache.Font[size][source] = love.graphics.newFont(source,size)
+			cache.Font[size][source]:setFilter("nearest","nearest")
 		end
 		return self:new("FontAsset",function(t)
 			t.font = cache.Font[size][source]
