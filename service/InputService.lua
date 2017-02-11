@@ -57,7 +57,7 @@ function love.mousemoved(...)
 	InputService.mouseMoved:fire(...)
 end
 
-function love.mousewheel(...)
+function love.wheelmoved(...)
 	InputService.mouseWheel:fire(...)
 end
 
