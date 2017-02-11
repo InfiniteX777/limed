@@ -25,48 +25,16 @@ Line = Instance:api({
 	end
 },{
 	closest = function(self,v)
-		local p = v-self.a
-		local delta = max(0,p.unit:dot(self.direction))
-
-		return self.a+self.direction*p.mag*delta
-	end,
-	circleIntersect = function(self,v,r)
-		local p = self:closest(v)
-		if (p-v).mag <= r then
-			p = p-self.direction*sqrt(r^2-(p-self.a).mag^2)
-			if (p-self.a).mag <= self.mag then
-				return p
-			end
-		end
+		return lemon.line.closest(self.a,self.b,v)
 	end,
 	lineIntersect = function(self,line)
-		local a,b,c,d = self.a,self.b,line.a,line.b
-		local r = b-a
-		local s = d-c
-		local d = r:cross(s)
-
-		local u = (c-a):cross(r)/d
-		local t = (c-a):cross(s)/d
-
-		return 0 <= u and u <= 1 and 0 <= t and t <= 1 and a+t*r or nil
+		return lemon.line.lineIntersect(self.a,self.b,line.a,line.b)
+	end,
+	circleIntersect = function(self,v,r)
+		return lemon.line.circleIntersect(self.a,self.b,v,r)
 	end,
 	rectIntersect = function(self,rect)
-		local axis = rect:axis()
-		local c = rect.corner
-		local x,y = self.direction:cross(axis[2]),-self.direction:cross(axis[1])
-		local h,v
-
-		if x >= 0 then
-			h = self:lineIntersect(Line:new(c[1],c[4]))
-		else h = self:lineIntersect(Line:new(c[2],c[3]))
-		end
-
-		if y >= 0 then
-			v = self:lineIntersect(Line:new(c[1],c[2]))
-		else v = self:lineIntersect(Line:new(c[3],c[4]))
-		end
-
-		return h or v
+		return lemon.line.rectIntersect(self.a,self.b,rect)
 	end,
 	mapIntersect = function(self,map)
 		local dir = self.direction
