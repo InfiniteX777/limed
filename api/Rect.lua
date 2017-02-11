@@ -21,13 +21,12 @@ Rect = Instance:api({
 			rawset(self,"center",rawget(self,"dposition")+rawget(self,"dsize")/2)
 			return rawget(self,"center")
 		elseif i == "corner" then
-			local position = rawget(self,"dposition")
-			local size = rawget(self,"dsize")
+			local position,size,rotation,center = rawget(self,"dposition"),rawget(self,"dsize"),rawget(self,"drotation"),self.center
 			rawset(self,"corner",{
-				position:rotateToVectorSpace(self.center,self.rotation), -- top left
-				Vector2:new(position.x+size.x,position.y):rotateToVectorSpace(self.center,self.rotation), -- top right
-				(position+size):rotateToVectorSpace(self.center,self.rotation), -- bottom right
-				Vector2:new(position.x,position.y+size.y):rotateToVectorSpace(self.center,self.rotation) -- bottom left
+				position:rotateToVectorSpace(center,rotation), -- top left
+				Vector2:new(position.x+size.x,position.y):rotateToVectorSpace(center,rotation), -- top right
+				(position+size):rotateToVectorSpace(center,rotation), -- bottom right
+				Vector2:new(position.x,position.y+size.y):rotateToVectorSpace(center,rotation) -- bottom left
 			})
 			return rawget(self,"corner")
 		end
