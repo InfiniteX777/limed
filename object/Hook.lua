@@ -1,12 +1,12 @@
 local Hook = Instance:class("Hook",3)({
-	func = nil,
+	callback = nil,
 	event = nil,
-	fire = function(self,...)
-		if self.func then
-			self.func(...)
+	fire = function(self,super,...)
+		if self.callback then
+			self.callback(...)
 		end
 	end,
-	disconnect = function(self)
+	disconnect = function(self,super)
 		if self.event then
 			self.event:disconnect(self)
 		end

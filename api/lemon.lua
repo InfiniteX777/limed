@@ -1,8 +1,14 @@
-local max,min,sqrt = math.max,math.min,math.sqrt
+local max,min,sqrt,ceil,pi,cos,sin = math.max,math.min,math.sqrt,math.ceil,math.pi,math.cos,math.sin
+local insert = table.insert
 
 lemon = Instance:api({
+	least = 5.421011185545e-20,
 	clamp = function(a,b,v)
 		return max(a or 0,min(v or 0,b or 0))
+	end,
+	lerp = function(a,b,d)
+		d = max(-1,min(1,d))
+		return a*(1-d)+b*d
 	end,
 	table = {
 		init = function(t,...)
@@ -102,6 +108,60 @@ lemon = Instance:api({
 			end
 
 			return h or v
+		end
+	},
+	ellipse = {
+		toPoly = function(a,b,d)
+			local d = d or 16
+			local l = {{}}
+
+			if d <= 8 then
+				for x=0,d-1 do
+					insert(
+						l[1],
+						cos(x/d*pi*2)*a
+					)
+					insert(
+						l[1],
+						sin(x/d*pi*2)*b
+					)
+				end
+			else local x = 1
+				local i = 1
+				while x <= d do
+					x = x-1
+					l[i] = {0,0}
+					for n=0,min(7,d-x+1)-1 do
+						insert(
+							l[i],
+							cos(x/d*pi*2)*a
+						)
+						insert(
+							l[i],
+							sin(x/d*pi*2)*b
+						)
+						x = x+1
+					end
+					i = i+1
+				end
+			end
+
+			return l
+		end,
+		toLine = function(a,b,d)
+			local d = d or 16
+			local l = {}
+
+			for x=0,d-1 do
+				insert(l,
+					cos(x/d*pi*2)*a
+				)
+				insert(l,
+					sin(x/d*pi*2)*b
+				)
+			end
+
+			return l
 		end
 	}
 })

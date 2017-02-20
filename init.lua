@@ -1,3 +1,5 @@
+local insert = table.insert
+
 local module = {
 	"api",
 	"reference",
@@ -8,91 +10,52 @@ local module = {
 local path = (...) and (...):gsub("%.init$",""):gsub("%.","/") or ""
 
 local class = {}
+local queue = {}
 
 Instance = {}
 Instance.__index = Instance
 
 function Instance:class(name,security)
 	if not class[name] then
-		security = security or 3
+		local security = security or 3
 		return function(t)
-			t = t or {}
+			local t = t or {}
 			t.__index = t
+
+			for k,v in pairs(t) do
+				if type(v) == "function" then
+					local f = v
+					t[k] = function(child,...)
+						return f(child,self,...)
+					end
+				end
+			end
 
 			t.name = function()
 				return name
 			end
+
 			t.security = function()
 				return security
 			end
-			t.is = function(t,name)
-				return t:name() == name or self:is(name)
-			end
-			local construct = t.new
-			t.construct = function(t,prop)
-				local n = setmetatable(self:construct(),t)
 
-				for k,v in pairs(t) do
-					if v == Instance.event then
-						n[k] = v()
-					elseif type(v) == "table" and v ~= t then
-						n[k] = lemon.table.copy(v,nil,true)
-					end
+			t.is = function(t,ref,recursive)
+				if recursive == nil then
+					recursive = true
 				end
-				if construct then
-					construct(n)
-				end
-				if prop then
-					prop(n)
-				end
-				return n
-			end
-			t.new = function(t,ref,prop)
-				if class[ref] then
-					if (security == 2 and class[ref]:security() == 4) then
-						return class[ref]:construct(prop)
-					elseif class[ref]:is(name) and ref ~= name then
-						return class[ref]:construct(function(n)
-							local meta = getmetatable(t)
-							setmetatable(t,{})
-							lemon.table.copy(t,n)
-							setmetatable(t,meta)
-							if prop then
-								prop(n)
-							end
-						end)
-					end
-				end
-				return Instance:new(ref,prop)
-			end
-			t.clone = function(t,prop)
-				local meta = getmetatable(t)
-				setmetatable(t,{})
-				local n = setmetatable(lemon.table.copy(t,nil,true),meta)
-				setmetatable(t,meta)
-				if prop then
-					prop(n)
-				end
-				return n
-			end
-			local destroy = t.destroy or Instance.destroy
-			t.destroy = function(t)
-				destroy(t)
-				self.destroy(t)
+				return name == ref or recursive and self:is(ref)
 			end
 
-			local update = t.update or Instance.update
-			t.update = rawget(t,"__update") and update or function(t,dt)
-				self.update(t,dt)
-				update(t,dt)
-			end
-			local draw = t.draw or Instance.draw
-			t.draw = rawget(t,"__draw") and draw or function(t,...)
-				self.draw(t,...)
-				draw(t,...)
-			end
+			t.constructor = t.new
+
+			t.new = nil
 
 			class[name] = setmetatable(t,self)
+
+			if queue[k] then
+				for _,v in pairs(queue[k]) do v() end
+				queue[k] = nil
+			end
 
 			return t
 		end
@@ -113,42 +76,59 @@ function Instance:api(meta,func,const)
 	return meta
 end
 
+local event = {
+	fire = function(self,...)
+		for k,v in pairs(self.hook) do
+			if v then
+				k:fire(...)
+			else self.hook[k] = nil
+			end
+		end
+	end,
+	connect = function(self,callback)
+		local v = Instance:new("Hook")
+		v.event = self
+		v.callback = callback
+		self.hook[v] = true
+
+		return v
+	end,
+	disconnect = function(self,hook)
+		if self.hook[hook] then
+			self.hook[hook] = nil
+		end
+	end,
+	disconnectAll = function(self)
+		self.hook = {}
+	end
+}
 function Instance:event()
 	return {
 		hook = {},
-		fire = function(self,...)
-			for k,v in pairs(self.hook) do
-				if v then
-					k:fire(...)
-				else self.hook[k] = nil
-				end
-			end
-		end,
-		connect = function(self,func)
-			local v = Instance:new("Hook")
-			v.event = self
-			v.func = func
-			self.hook[v] = true
-
-			return v
-		end,
-		disconnect = function(self,hook)
-			if self.hook[hook] then
-				self.hook[hook] = nil
-			end
-		end,
-		disconnectAll = function(self)
-			self.hook = {}
-		end,
+		fire = event.fire,
+		connect = event.connect,
+		disconnect = event.disconnect,
+		disconnectAll = event.disconnectAll,
 		__event = true
 	}
 end
 
 function Instance:new(name,prop)
 	if name and class[name] then
-		if class[name]:security() == 3 then
+		local security = class[name]:security()
+		local superName = self:name()
+		if security == 3 then -- Creating object classes with root class.
 			return class[name]:construct(prop)
-		else print("Unable to instantiate class '"..name.."'. Security level is "..class[name]:security()..".")
+		elseif security == 4 and self:security() == 2 then -- Creating reference classes with service classes.
+			return class[name]:construct(prop)
+		elseif class[name]:is(superName) and name ~= superName then -- Creating descendant classes with ancestral classes.
+			return class[name]:construct(function(n)
+				lemon.table.copy(self,n)
+				if prop then
+					prop(n)
+				end
+			end)
+		else print("Unable to instantiate class '"..name.."' with class '"..superName.."'. Security level is "..class[name]:security()..".")
 		end
 	else print("Class '"..name.."' does not exist!")
 	end
@@ -164,12 +144,25 @@ function Instance:name()
 	return "Instance"
 end
 
+function Instance:security()
+	return 1
+end
+
+--[[function Instance:is(name)
+	return self:name() == name or self.super and self.super:is(name) or false
+end]]
+
 function Instance:is(name)
 	return self:name() == name
 end
 
-function Instance:security()
-	return 1
+function Instance:clone(prop)
+	return self:construct(function(t)
+		lemon.table.copy(self,t,true)
+		if prop then
+			prop(n)
+		end
+	end)
 end
 
 function Instance:destroy()
@@ -185,8 +178,37 @@ function Instance:update() end
 
 function Instance:draw() end
 
-function Instance:construct()
-	return setmetatable({},self)
+function Instance:constructor() end
+
+function Instance:construct(prop,sys)
+	local t = setmetatable({},self)
+	local meta = self
+	while meta ~= nil do
+		for k,v in pairs(meta) do
+			if type(v) == "table" and v ~= t and k ~= "super" then
+				t[k] = lemon.table.copy(v,nil,true)
+			end
+		end
+		meta = getmetatable(meta)
+	end
+
+	self.constructor(t)
+
+	if prop then
+		prop(t)
+	end
+
+	return t
+end
+
+function Instance:waitFor(name,callback)
+	if class[name] then
+		callback()
+	else if not queue[name] then
+			queue[name] = {}
+		end
+		insert(queue[name],callback)
+	end
 end
 
 for _,t in pairs(module) do

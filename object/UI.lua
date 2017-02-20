@@ -2,19 +2,19 @@ local UI = Instance:class("UI",3)({
 	elements = {},
 	visible = true,
 	active = true,
-	add = function(self,v)
+	add = function(self,super,v)
 		if v:is("UI") then
 			self.elements[v] = true
 			self.elementAdded:fire(v)
 		end
 	end,
-	rem = function(self,v)
+	rem = function(self,super,v)
 		if self.elements[v] then
 			self.elements[v] = nil
 			self.elementRemoved:fire(v)
 		end
 	end,
-	destroy = function(self)
+	destroy = function(self,super)
 		for k,v in pairs(self.elements) do
 			if v then
 				k:destroy()
@@ -23,7 +23,7 @@ local UI = Instance:class("UI",3)({
 			end
 		end
 	end,
-	update = function(self,dt)
+	update = function(self,super,dt)
 		if self.active then
 			for k,v in pairs(self.elements) do
 				if v then
@@ -34,7 +34,7 @@ local UI = Instance:class("UI",3)({
 			end
 		end
 	end,
-	draw = function(self,...)
+	draw = function(self,super,...)
 		if self.visible then
 			for k,v in pairs(self.elements) do
 				if v then
@@ -45,8 +45,8 @@ local UI = Instance:class("UI",3)({
 			end
 		end
 	end,
-	elementAdded = Instance.event,
-	elementRemoved = Instance.event
+	elementAdded = Instance:event(),
+	elementRemoved = Instance:event()
 })
 
 local Frame = UI:class("Frame",3)({
@@ -56,9 +56,9 @@ local Frame = UI:class("Frame",3)({
 	lineColor = Color:new(),
 	image = nil,
 	hover = false,
-	new = function(self)
-		local InputService = Instance:service("InputService")
-		self.mouseMovedHook = InputService.mouseMoved:connect(function(x,y,...)
+	new = function(self,super)
+		local game = Instance:service("GameInterface")
+		self.mouseMovedHook = game.mouseMoved:connect(function(x,y,...)
 			local rect = self:rect()
 			if rect.area > 0 then
 				if x >= rect.position.x and x <= rect.position.x+rect.size.x and y >= rect.position.y and y <= rect.position.y+rect.size.y then
@@ -73,23 +73,23 @@ local Frame = UI:class("Frame",3)({
 				end
 			end
 		end)
-		self.mouseDownHook = InputService.mouseDown:connect(function(...)
+		self.mouseDownHook = game.mouseDown:connect(function(...)
 			if self.hover then
 				self.mouseDown:fire(...)
 			end
 		end)
-		self.mouseUpHook = InputService.mouseUp:connect(function(...)
+		self.mouseUpHook = game.mouseUp:connect(function(...)
 			if self.hover then
 				self.mouseUp:fire(...)
 			end
 		end)
-		self.mouseWheelHook = InputService.mouseWheel:connect(function(...)
+		self.mouseWheelHook = game.mouseWheel:connect(function(...)
 			if self.hover then
 				self.mouseWheel:fire(...)
 			end
 		end)
 	end,
-	rect = function(self)
+	rect = function(self,super)
 		local screen = Vector2:new(love.graphics.getDimensions())
 		return Rect:new(
 			self.offset.position+self.scale.position*screen,
@@ -97,14 +97,14 @@ local Frame = UI:class("Frame",3)({
 			self.offset.rotation-self.scale.rotation
 		)
 	end,
-	destroy = function(self)
+	destroy = function(self,super)
 		for _,v in pairs({"Moved","Down","Up","Wheel"}) do
 			if self["mouse"..v.."Hook"] then
 				self["mouse"..v.."Hook"]:disconnect()
 			end
 		end
 	end,
-	draw = function(self,x,y,angle,sx,sy)
+	draw = function(self,super,x,y,angle,sx,sy)
 		local rect = self:rect()
 		local rot = angle+rect.rotation
 		rect.position = rect.center+Vector2:new(x,y)
@@ -128,12 +128,12 @@ local Frame = UI:class("Frame",3)({
 		end
 		love.graphics.pop()
 	end,
-	mouseEntered = Instance.event,
-	mouseMoved = Instance.event,
-	mouseLeave = Instance.event,
-	mouseDown = Instance.event,
-	mouseUp = Instance.event,
-	mouseWheel = Instance.event
+	mouseEntered = Instance:event(),
+	mouseMoved = Instance:event(),
+	mouseLeave = Instance:event(),
+	mouseDown = Instance:event(),
+	mouseUp = Instance:event(),
+	mouseWheel = Instance:event()
 })
 
 local alignment = {
@@ -154,10 +154,10 @@ local Label = Frame:class("Label",3)({
 	textColor = Color:new(),
 	textWrap = false,
 	font = nil,
-	new = function(self)
+	new = function(self,super)
 		self.font = Instance:service("ContentService"):getFont()
 	end,
-	draw = function(self,x,y,angle,sx,sy,...)
+	draw = function(self,super,x,y,angle,sx,sy,...)
 		local rect = self:rect()
 		local rot = angle+rect.rotation
 		self.font.text = self.text
