@@ -1,59 +1,78 @@
 local max,min,huge,abs = math.max,math.min,math.huge,math.abs
 local prop = {"center","corner"}
 
-local function reset(self,i)
-	if i == "size" then
-		rawset(self,"area",nil)
+local function reset(self,k)
+	if k == "x" or k == "y" then
+		self.position = nil
+	end
+	if k == "w" or k == "h" then
+		self.area = nil
+		self.size = nil
 	end
 	for _,v in pairs(prop) do
-		rawset(self,v,nil)
+		self[v] = nil
 	end
 end
 
-Rect = Instance:api({
-	__index = function(self,i)
-		if i == "size" or i == "position" or i == "rotation" then
-			return rawget(self,"d"..i)
-		elseif i == "area" then
-			rawset(self,"area",rawget(self.size,"dx")*rawget(self.size,"dy"))
-			return rawget(self,"area")
-		elseif i == "center" then
-			rawset(self,"center",rawget(self,"dposition")+rawget(self,"dsize")/2)
-			return rawget(self,"center")
-		elseif i == "corner" then
-			local position,size,rotation,center = rawget(self,"dposition"),rawget(self,"dsize"),rawget(self,"drotation"),self.center
-			rawset(self,"corner",{
-				position:rotateToVectorSpace(center,rotation), -- top left
-				Vector2:new(position.x+size.x,position.y):rotateToVectorSpace(center,rotation), -- top right
-				(position+size):rotateToVectorSpace(center,rotation), -- bottom right
-				Vector2:new(position.x,position.y+size.y):rotateToVectorSpace(center,rotation) -- bottom left
-			})
-			return rawget(self,"corner")
-		end
+Rect = Instance:api{
+	new = function(self,x,y,w,h,rotation)
+		self:set(
+			x or 0,
+			y or 0,
+			w or 0,
+			h or 0,
+			rotation or 0
+		)
 	end,
-	__newindex = function(self,i,v)
-		if (i == "position" or i == "size" or i == "rotation") and self["d"..i] ~= v then
-			rawset(self,i,nil)
-			if i == "size" then
-				v = Vector2:new(max(0,v.dx),max(0,v.dy))
+	__eq = function(a,b)
+		return a.x == b.x and a.y == b.y and a.w == b.w and a.h == b.h and a.rotation == b.rotation
+	end,
+	__index = function(self,k,v)
+		if not v then
+			if k == "position" then
+				v = Vector2:new(self.x,self.y)
+				self.position = v
+			elseif k == "size" then
+				v = Vector2:new(self.w,self.h)
+				self.size = v
+			elseif k == "area" then
+				v = self.w*self.h
+				self.area = v
+			elseif k == "center" then
+				v = self.position+self.size/2
+				self.center = v
+			elseif k == "corner" then
+				local position,size,rotation,center = self.position,self.size,self.rotation,self.center
+
+				v = {
+					position:rotate(center,rotation), -- top left
+					Vector2:new(position.x+size.x,position.y):rotate(center,rotation), -- top right
+					(position+size):rotate(center,rotation), -- bottom right
+					Vector2:new(position.x,position.y+size.y):rotate(center,rotation) -- bottom left
+				}
+				self.corner = v
 			end
-			if i == "size" or i == "position" then
-				rawset(v,"__callback",function(t,k,v)
-					if k == "x" or k == "y" then
-						rawset(t,"d"..k,max(0,v))
-						reset(self,i)
-					end
-				end)
-			end
-			rawset(self,"d"..i,v)
-			reset(self,i)
 		end
+
+		return v
+	end,
+	__newindex = function(self,k,v)
+		if (k == "x" or k == "y" or k == "w" or k == "h" or k == "r") and self[k] ~= v then
+			reset(self,k)
+		end
+
+		return v
 	end,
 	__tostring = function(self)
-		local center = self.center
-		return "["..tostring(self.dposition).."], ["..tostring(self.dsize).."], "..self.drotation
-	end
-},{
+		return "["..tostring(self.position).."], ["..tostring(self.size).."], "..self.rotation
+	end,
+	set = function(self,x,y,w,h,rotation)
+		self.x = x or self.x
+		self.y = y or self.y
+		self.w = w or self.w
+		self.h = h or self.h
+		self.rotation = rotation or self.rotation
+	end,
 	axis = function(a)
 		local b = a.corner
 		return {
@@ -106,16 +125,9 @@ Rect = Instance:api({
 		return true
 	end,
 	components = function(self)
-		return self.dposition,self.dsize,self.drotation
+		return self.x,self.y,self.w,self.h,self.rotation
 	end,
 	clone = function(self)
 		return Rect:new(self.dposition,self.dsize,self.drotation)
-	end,
-	type = function()
-		return "Rect"
 	end
-},function(self,position,size,rotation)
-	self.position = position or Vector2:new()
-	self.size = size or Vector2:new()
-	self.rotation = rotation or 0
-end)
+}

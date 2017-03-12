@@ -1,76 +1,58 @@
-local down = love.keyboard.isDown
+local random,pi,cos,sin,max = math.random,math.pi,math.cos,math.sin,math.max
 
-local GameInterface = Instance:class("GameInterface",2)({
+local game = Instance:class("GameInterface",2){
 	scale = 1,
 	angle = 0,
-	x = 0,
-	y = 0,
-	isDown = function(self,super,key)
-		return type(key) == "number" and love.mouse.isDown(key) or down(key)
+	ui = nil,
+	map = nil,
+	tremors = {},
+	focus = Vector2:new(),
+	window = Vector2:new(love.graphics.getDimensions()),
+	showStats = true,
+	time = 0,
+	quitCallback = function() end,
+	focusBody = function(self,super,body)
+		self.focus:set(body:getPosition())
 	end,
-	isShift = function(self,super)
-		return down("lshift","rshift")
+	getFocus = function(self,super)
+		local angle = random()*pi*2
+		local focus = self.focus
+		local mag = 0
+		local shake = Vector2:new(cos(angle),sin(angle))
+
+		for k,_ in pairs(self.tremors) do
+			local d = k.magnitude
+
+			if k.source then
+				d = d/max(1,(focus-k.source).mag-k.radius/2)
+			end
+
+			if d <= k.threshold then
+				d = 0
+			end
+
+			mag = mag+d
+		end
+
+		return self.window/2-(focus+shake*mag)*self.scale
 	end,
-	isCtrl = function(self,super)
-		return down("lctrl","rctrl")
+	tremor = function(self,super,source,magnitude,intensity,radius,threshold)
+		local tremor = self:new("Tremor")
+		tremor.source = source
+		tremor.magnitude = magnitude
+		tremor.intensity = intensity or 4
+		tremor.radius = radius or 64
+		tremor.threshold = threshold or 0.1
+
+		self.tremors[tremor] = true
+
+		return tremor
 	end,
-	isAlt = function(self,super)
-		return down("lalt","ralt")
+	setQuitCallback = function(self,super,callback)
+		self.quitCallback = callback
 	end,
+	gameResize = Instance:event(),
 	gameUpdate = Instance:event(),
 	gameDraw = Instance:event(),
-	keyDown = Instance:event(),
-	keyUp = Instance:event(),
-	mouseDown = Instance:event(),
-	mouseUp = Instance:event(),
-	mouseMoved = Instance:event(),
-	mouseWheel = Instance:event(),
-	touchDown = Instance:event(),
-	touchUp = Instance:event(),
-	touchMoved = Instance:event()
-})
-
-function love.update(...)
-	GameInterface.gameUpdate:fire(...)
-	collectgarbage()
-end
-
-function love.draw(...)
-	GameInterface.gameDraw:fire(...)
-end
-
-function love.keypressed(...)
-	GameInterface.keyDown:fire(...)
-end
-
-function love.keyreleased(...)
-	GameInterface.keyUp:fire(...)
-end
-
-function love.mousepressed(...)
-	GameInterface.mouseDown:fire(...)
-end
-
-function love.mousereleased(...)
-	GameInterface.mouseUp:fire(...)
-end
-
-function love.mousemoved(...)
-	GameInterface.mouseMoved:fire(...)
-end
-
-function love.wheelmoved(...)
-	GameInterface.mouseWheel:fire(...)
-end
-
-function love.touchpressed(...)
-	GameInterface.touchDown:fire(...)
-end
-
-function love.touchreleased(...)
-	GameInterface.touchUp:fire(...)
-end
-
-function love.touchmoved(...)
-	GameInterface.touchMoved:fire(...)
-end
+	gameQuit = Instance:event()
+}

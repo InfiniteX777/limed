@@ -1,18 +1,9 @@
 local floor,ceil,max,min = math.floor,math.ceil,math.max,math.min
+local graphics = Instance:service"GraphicsInterface"
 
 local cache = {}
 
-local function get(image,x,y,w,h)
-	local k = x.."/"..y.."/"..w.."/"..h
-
-	if not cache[image] or not cache[image][k] then
-		lemon.table.init(cache,image)[k] = love.graphics.newQuad(x,y,w,h,image:getDimensions())
-	end
-
-	return cache[image][k]
-end
-
-local Image = Instance:class("Image",4)({
+local Image = Instance:class("Image",4){
 	image = nil,
 	color = Color:new(255,255,255),
 	width = 0,
@@ -22,14 +13,24 @@ local Image = Instance:class("Image",4)({
 		local mx,my,sx,sy = mx or 0,my or 0,sx or 0,sy or 0
 		for y=0,ceil(((self.height-my)/(h+sy)))-1 do
 			for x=0,ceil(((self.width-mx)/(w+sx)))-1 do
-				get(
-					self.image,
+				self:get(
 					mx+x*(w+sx),
 					my+y*(h+sy),
 					w,h
 				)
 			end
 		end
+	end,
+	get = function(self,super,x,y,w,h)
+		local x,y,w,h = x or 0,y or 0,w or self.width,h or self.height
+		local image = self.image
+		local k = x.."/"..y.."/"..w.."/"..h
+
+		if not cache[image] or not cache[image][k] then
+			lemon.table.init(cache,image)[k] = love.graphics.newQuad(x,y,w,h,image:getDimensions())
+		end
+
+		return cache[image][k]
 	end,
 	quad = function(self,super,x,y,w,h)
 		local x,y = x or 0,y or 0
@@ -60,49 +61,56 @@ local Image = Instance:class("Image",4)({
 	end,
 	draw = function(self,super,x,y,angle,sx,sy,...)
 		if self.image then
+			local angle,sx,sy = angle or 0,sx or 1,sy or 1
 			love.graphics.push()
-			love.graphics.setColor(self.color:components())
-			local pos,size = Vector2:new(x,y),Vector2:new(self.width*sx,self.height*sy)
+			graphics:pushColor(self.color:components())
+
+			local pos = Vector2:new(x,y)
+			local size = Vector2:new(self.width*sx,self.height*sy)
 			if self.flip then
 				sx = -sx
 				pos.x = pos.x+size.x
 			end
-			pos = pos:rotateToVectorSpace(pos+size/2,angle)
+			pos = pos:rotate(pos+size/2,angle)
 			love.graphics.draw(self.image,pos.x,pos.y,angle,sx,sy,...)
+
+			graphics:popColor()
 			love.graphics.pop()
 		end
 	end
-})
+}
 
-local Quad = Image:class("Quad",4)({
+local Quad = Image:class("Quad",4){
 	frame = nil,
 	x = 0,
 	y = 0,
-	get = function(self,super)
-		if self.image then
-			return get(self.image,self.x,self.y,self.width,self.height)
-		end
-	end,
 	draw = function(self,super,x,y,angle,sx,sy,...)
+		local angle,sx,sy = angle or 0,sx or 1,sy or 1
 		if self.image then
-			if not self.frame then
-				self.frame = self:get()
-			end
+			local angle,sx,sy = angle or 0,sx or 1,sy or 1
+
 			love.graphics.push()
-			love.graphics.setColor(self.color:components())
+			graphics:pushColor(self.color:components())
+
+			self.frame = self.frame or self:get(self.x,self.y,self.width,self.height)
+
 			local pos,size = Vector2:new(x,y),Vector2:new(self.width*sx,self.height*sy)
+
 			if self.flip then
 				sx = -sx
 				pos.x = pos.x+size.x
 			end
-			pos = pos:rotateToVectorSpace(pos+size/2,angle)
+
+			pos = pos:rotate(pos+size/2,angle)
 			love.graphics.draw(self.image,self.frame,pos.x,pos.y,angle,sx,sy,...)
+
+			graphics:popColor()
 			love.graphics.pop()
 		end
 	end
-})
+}
 
-local Sprite = Quad:class("Sprite",4)({
+local Sprite = Quad:class("Sprite",4){
 	fx = 0,
 	fy = 0,
 	mfx = 0,
@@ -123,17 +131,14 @@ local Sprite = Quad:class("Sprite",4)({
 	sheet = {},
 	play = function(self,super)
 		self.playing = true
-		self.animationStarted:fire()
 	end,
 	pause = function(self,super)
 		self.playing = false
-		self.animationStopped:fire()
 	end,
 	stop = function(self,super)
 		self.playing = false
 		self.fx = self.startFrame
 		self.timer = 0
-		self.animationStopped:fire()
 	end,
 	seek = function(self,super,x,y)
 		self.fx = max(self.startFrame,min(x or self.fx,self.endFrame))
@@ -160,9 +165,6 @@ local Sprite = Quad:class("Sprite",4)({
 					if self.direction == 1 then
 						self.playing = self.loop
 						self.fx = self.playing and self.startFrame or self.endFrame
-						if not self.playing then
-							self.animationEnded:fire()
-						end
 					else self.fx = self.endFrame
 					end
 				end
@@ -175,8 +177,5 @@ local Sprite = Quad:class("Sprite",4)({
 		else self.x = self.mx+self.fx*(self.width+self.sx)
 			self.y = self.my+self.fy*(self.height+self.sy)
 		end
-	end,
-	animationStarted = Instance:event(),
-	animationEnded = Instance:event(),
-	animationStopped = Instance:event()
-})
+	end
+}

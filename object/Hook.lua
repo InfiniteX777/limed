@@ -1,4 +1,4 @@
-local Hook = Instance:class("Hook",3)({
+local Hook = Instance:class("Hook",3){
 	callback = nil,
 	event = nil,
 	fire = function(self,super,...)
@@ -11,4 +11,4 @@ local Hook = Instance:class("Hook",3)({
 			self.event:disconnect(self)
 		end
 	end
-})
+}

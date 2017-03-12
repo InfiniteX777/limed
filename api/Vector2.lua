@@ -1,101 +1,107 @@
 local max,min,cos,sin = math.max,math.min,math.cos,math.sin
 
-Vector2 = Instance:api({
-	__add = function(a,b)
-		if type(b) == "table" then
-			return Vector2:new(a.x+b.x,a.y+b.y)
+local function convert(...)
+	local l = {...}
+
+	for k,v in pairs(l) do
+		if type(v) == "number" then
+			l[k] = Vector2:new(v,v)
 		end
-		return Vector2:new(a.x+b,a.y+b)
+	end
+
+	return unpack(l)
+end
+
+Vector2 = Instance:api{
+	new = function(self,x,y)
+		self:set(x or 0,y or 0)
+	end,
+	__add = function(a,b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x+b.x,a.y+b.y)
 	end,
 	__sub = function(a,b)
-		if type(b) == "table" then
-			return Vector2:new(a.x-b.x,a.y-b.y)
-		end
-		return Vector2:new(a.x-b,a.y-b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x-b.x,a.y-b.y)
 	end,
 	__mul = function(a,b)
-		if type(a) == "number" then
-			a = Vector2:new(a,a)
-		end
-		if type(b) == "table" then
-			return Vector2:new(a.x*b.x,a.y*b.y)
-		end
-		return Vector2:new(a.x*b,a.y*b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x*b.x,a.y*b.y)
 	end,
 	__div = function(a,b)
-		if type(b) == "table" then
-			return Vector2:new(a.x/b.x,a.y/b.y)
-		end
-		return Vector2:new(a.x/b,a.y/b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x/b.x,a.y/b.y)
 	end,
 	__mod = function(a,b)
-		if type(b) == "table" then
-			return Vector2:new(a.x%b.x,a.y%b.y)
-		end
-		return Vector2:new(a.x%b,a.y%b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x%b.x,a.y%b.y)
 	end,
 	__pow = function(a,b)
-		if type(b) == "table" then
-			return Vector2:new(a.x^b.x,a.y^b.y)
-		end
-		return Vector2:new(a.x^b,a.y^b)
+		local a,b = convert(a,b)
+
+		return Vector2:new(a.x^b.x,a.y^b.y)
 	end,
 	__unm = function(a)
 		return Vector2:new(-a.x,-a.y)
 	end,
 	__eq = function(a,b)
-		if type(b) == "table" then
-			return a.x == b.x and a.y == b.y
-		end
-		return false
+		local a,b = convert(a,b)
+
+		return a.x == b.x and a.y == b.y
 	end,
 	__lt = function(a,b)
-		if type(b) == "table" then
-			return a.mag < b.mag
-		end
-		return false
+		local a,b = convert(a,b)
+
+		return a.mag < b.mag
 	end,
 	__le = function(a,b)
-		if type(b) == "table" then
-			return a.mag <= b.mag
-		end
-		return false
+		local a,b = convert(a,b)
+
+		return a.mag <= b.mag
 	end,
-	__index = function(self,i)
-		if i == "x" or i == "y" then
-			return rawget(self,"d"..i)
-		elseif i == "unit" then
-			rawset(self,"unit",Vector2:new(self.dx,self.dy)/self.mag)
-			return rawget(self,"unit")
-		elseif i == "mag" then
-			rawset(self,"mag",(self.dx^2+self.dy^2)^0.5)
-			return rawget(self,"mag")
-		elseif i == "perpendicular" then
-			rawset(self,"perpendicular",Vector2:new(self.dy,-self.dx).unit)
-			return rawget(self,"perpendicular")
+	__index = function(self,k,v)
+		if not v then
+			if k == "unit" then
+				v = Vector2:new(self.x,self.y)/self.mag
+				self.unit = v
+			elseif k == "mag" then
+				v = (self.x^2+self.y^2)^0.5
+				self.mag = v
+			elseif k == "perpendicular" then
+				v = Vector2:new(self.dy,-self.dx).unit
+				self.perpendicular = v
+			end
 		end
+
+		return v
 	end,
-	__newindex = function(self,i,v)
-		if (i == "x" or i == "y") and self["d"..i] ~= v then
-			rawset(self,i,nil)
-			rawset(self,"d"..i,v)
-			rawset(self,"unit",nil)
-			rawset(self,"mag",nil)
-			rawset(self,"perpendicular",nil)
+	__newindex = function(self,k,v)
+		if (k == "x" or k == "y") and self[k] ~= v then
+			local v = v or 0
+			self.mag = nil
+			self.unit = nil
+			self.perpendicular = nil
 		end
-		if self.__callback then
-			self.__callback(self,i,v)
-		end
+
+		return v
 	end,
 	__tostring = function(self)
-		return self.dx..", "..self.dy
-	end
-},{
+		return self.x..", "..self.y
+	end,
+	set = function(self,x,y)
+		self.x = x or self.x
+		self.y = y or self.y
+	end,
 	dot = function(a,b)
-		return a.dx*b.dx+a.dy*b.dy
+		return a.x*b.x+a.y*b.y
 	end,
 	cross = function(a,b)
-		return a.dx*b.dy-a.dy*b.dx
+		return a.x*b.y-a.y*b.x
 	end,
 	lerp = function(a,b,d)
 		d = max(0,min(d or 0,1))
@@ -106,22 +112,18 @@ Vector2 = Instance:api({
 		local c,d = Vector2:new(v1 and b.x or a.x,v2 and b.y or a.y),Vector2:new(v1 and a.x or b.x,v2 and a.y or b.y)
 		return Rect:new(c,d-c)
 	end,
-	rotateToVectorSpace = function(a,b,r)
+	rotate = function(a,b,r)
+		local c,d = b:components()
+		local a,b = a:components()
 		return Vector2:new(
-			b.x + (a.x-b.x)*cos(r) - (a.y-b.y)*sin(r),
-			b.y + (a.x-b.x)*sin(r) + (a.y-b.y)*cos(r)
+			c + (a-c)*cos(r) - (b-d)*sin(r),
+			d + (a-c)*sin(r) + (b-d)*cos(r)
 		)
 	end,
 	components = function(self)
-		return self.dx,self.dy
+		return self.x,self.y
 	end,
 	clone = function(self)
-		return Vector2:new(self.dx,self.dy)
-	end,
-	type = function()
-		return "Vector2"
+		return Vector2:new(self.x,self.y)
 	end
-},function(self,x,y)
-	self.x = x or 0
-	self.y = y or 0
-end)
+}

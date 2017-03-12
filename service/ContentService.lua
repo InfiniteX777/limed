@@ -30,34 +30,80 @@ local function apply(rigid,...)
 	end
 end
 
-local ContentService = Instance:class("ContentService",2)({
+local ContentService = Instance:class("ContentService",2){
+	fontAlignment = {
+		topleft = {0,0,"left"},
+		middleleft = {0,0.5,"left"},
+		bottomleft = {0,1,"left"},
+		topcenter = {0.5,0,"center"},
+		middlecenter = {0.5,0.5,"center"},
+		bottomcenter = {0.5,1,"center"},
+		topright = {1,0,"right"},
+		middleright = {1,0.5,"right"},
+		bottomright = {1,1,"right"}
+	},
+	loadItem = function(self,super,id)
+		local properties = Instance:service("Squeeze"):decode(id)
+
+		if not properties then return end
+		-- Corrupted ID
+
+		local stats = Instance:service("Statistics")
+
+		return self:new("Item",function(self)
+			self.get = function(self,k)
+				if properties[k] then
+					if type(properties[k]) == "function" then
+						return function(...)
+							return properties[k](self,...)
+						end
+					else return properties[k]
+					end
+				end
+
+				return stats.item[k]
+			end
+			self.id = function(self)
+				return id
+			end
+			self.iterate = function(self)
+				return pairs(properties)
+			end
+			self.equal = function(self,item)
+				return self:id() == item:id() and self:name() == item:name()
+			end
+		end)
+	end,
 	loadImage = function(self,super,source)
 		if not cache.Image[source] then
-			cache.Image[source] = love.graphics.newImage(source)
-			cache.Image[source]:setFilter("nearest","nearest")
+			cache.Image[source] = self:new("Image",function(self)
+				self.image = love.graphics.newImage(source)
+				self.width = self.image:getWidth()
+				self.height = self.image:getHeight()
+			end)
 		end
-		return self:new("Image",function(t)
-			t.image = cache.Image[source]
-			t.width = t.image:getWidth()
-			t.height = t.image:getHeight()
-		end)
+
+		return cache.Image[source]
 	end,
 	loadFont = function(self,super,source,size)
-		if not cache.Font then
-			cache.Font = {}
+		local source = source or "default"
+		local size = size or 12
+		local t = lemon.table.init(cache,"Font",size)
+		if not t[source] then
+			if source == "default" then
+				t[source] = self:new("FontAsset",function(self)
+					self.font = love.graphics.newFont(size)
+				end)
+			else t[source] = self:new("FontAsset",function(self)
+					self.font = love.graphics.newFont(source,size)
+				end)
+			end
 		end
-		if not cache.Font[size][source] then
-			cache.Font[size][source] = love.graphics.newFont(source,size)
-			cache.Font[size][source]:setFilter("nearest","nearest")
-		end
-		return self:new("FontAsset",function(t)
-			t.font = cache.Font[size][source]
-		end)
+
+		return t[source]
 	end,
-	getFont = function(self,super)
-		return self:new("FontAsset",function(t)
-			t.font = love.graphics.getFont()
-		end)
+	resetFont = function(self,super,size)
+		love.graphics.setFont(self:loadFont().font)
 	end,
 	loadMap = function(self,super,source)
 		local tiled = cache.Map[source] or require(source)
@@ -120,11 +166,22 @@ local ContentService = Instance:class("ContentService",2)({
 
 		-- Render
 		for index,layer in pairs(tiled.layers) do
-			index = index+2 -- Starting index layer is 3.
 			local ox,oy = layer.offsetx,layer.offsety
 			local lType = layer.type
 
 			if lType == "imagelayer" then
+				local x,y = ox,oy
+				local image = self:loadImage("assets/"..layer.image:gsub("%.%./",""))
+				image.color.a = layer.opacity*255
+
+				local frame = Instance:new("Frame")
+				frame.image = image
+				frame.offset:set(x,y,image.width,image.height)
+				frame.fillColor.a = 0
+				frame.lineColor.a = 0
+				Color:new(255,255,255,255)
+
+				map:add(frame,index)
 			else for k,v in pairs(lType == "tilelayer" and layer.data or layer.objects) do
 					local x,y = ox,oy
 					local static = true
@@ -141,17 +198,15 @@ local ContentService = Instance:class("ContentService",2)({
 
 					if lType == "tilelayer" and v > 0 then
 						k = k-1
-						x,y = x+k%layer.width,y+floor(k/layer.height)
+						x,y = x+k%layer.width+0.5,y+floor(k/layer.height)+0.5
 
-						rigid = map:rectangle(
-							index,
-							object.image,
+						rigid = map:rigid(index,map:rectangle(
 							static,
 							x*w+layer.offsetx,
 							y*h+layer.offsety,
 							w,
 							h
-						)
+						),object.image)
 
 						local set = object.set
 						rigid.imageOffset = Vector2:new(
@@ -159,44 +214,38 @@ local ContentService = Instance:class("ContentService",2)({
 							set.tileoffset.y-(set.tileheight-h)/2
 						)
 					elseif lType == "objectgroup" then
-						x,y = x+object.x,y+object.y
+						x,y = x+w/2+object.x,y+h/2+object.y
 
 						if object.gid or object.shape == "rectangle" or object.shape == "ellipse" then
 							local a,b,r = object.width,object.height,rad(object.rotation)
-							local p = Vector2:new(x,y):rotateToVectorSpace(Vector2:new(x-a/2,y-b/2),r)
+							local p = Vector2:new(x,y):rotate(Vector2:new(x-a/2,y-b/2),r)
 
 							if object.gid then
 								local tile = tiled.tiles[object.gid]
 								local set = tile.set
-								rigid = map:rectangle(
-									index,
-									tile.image,
+								rigid = map:rigid(index,map:rectangle(
 									static,
 									p.x+set.tileoffset.x+(set.tilewidth-w)/2,
 									p.y+set.tileoffset.y-(set.tileheight-h)/2-h,
 									object.width,
 									object.height
-								)
+								),tile.image)
 							elseif object.shape == "rectangle" then
-								rigid = map:rectangle(
-									index,
-									nil,
+								rigid = map:rigid(index,map:rectangle(
 									static,
 									p.x+w,
 									p.y+h,
 									object.width,
 									object.height
-								)
-							else rigid = map:ellipse(
-									index,
-									nil,
+								))
+							else rigid = map:rigid(index,map:ellipse(
 									static,
 									p.x+(a-w)/2,
 									p.y+(b-h)/2,
 									a/2,
 									b/2,
 									object.properties.segments
-								)
+								))
 							end
 
 						elseif object.shape == "polyline" or object.shape == "polygon" then
@@ -210,22 +259,18 @@ local ContentService = Instance:class("ContentService",2)({
 							end
 
 							if object.shape == "polyline" then
-								rigid = map:polyline(
-									index,
-									nil,
+								rigid = map:rigid(index,map:polyline(
 									static,
 									x-w/2,
 									y-h/2,
 									object.polyline
-								)
-							else rigid = map:polygon(
-									index,
-									nil,
+								))
+							else rigid = map:rigid(index,map:polygon(
 									static,
 									x-w/2,
 									y-h/2,
 									object.polygon
-								)
+								))
 							end
 						end
 
@@ -255,4 +300,4 @@ local ContentService = Instance:class("ContentService",2)({
 
 		return map
 	end
-})
+}

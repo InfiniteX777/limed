@@ -1,7 +1,9 @@
-local pi,asin,abs,min,max,random,cos,sin = math.pi,math.asin,math.abs,math.min,math.max,math.random,math.cos,math.sin
+local pi,asin,abs,min,max,random,cos,sin,floor = math.pi,math.asin,math.abs,math.min,math.max,math.random,math.cos,math.sin,math.floor
+local graphics = Instance:service"GraphicsInterface"
+local content = Instance:service"ContentService"
 
-local Rigid = Instance:class("Rigid",3)({
-	world = nil,
+local Rigid = Instance:class("Rigid",3){
+	map = nil,
 	body = nil,
 	image = nil,
 	imageOffset = Vector2:new(),
@@ -9,11 +11,14 @@ local Rigid = Instance:class("Rigid",3)({
 	lifespan = nil,
 	platform = false,
 	bouncy = false,
-	drawpoints = true,
+	drawPoints = false,
 	applyFixture = function(self,super,callback)
 		for _,v in pairs(self.body:getFixtureList()) do
 			callback(v)
 		end
+	end,
+	getLayer = function(self,super)
+		return self.map and self.map.objects[self] or nil
 	end,
 	draw = function(self,super,x,y,angle,sx,sy,...)
 		local rot = self.body:getAngle()+angle
@@ -29,37 +34,32 @@ local Rigid = Instance:class("Rigid",3)({
 			self.image:draw(bx-mx/2*ix+ox,by-my/2*iy+oy,rot,ix,iy,...)
 		end
 
-		if self.drawpoints then
+		if self.drawPoints or self.map and self.map.drawPoints then
 			for _,v in pairs(self.body:getFixtureList()) do
 				local shape = v:getShape()
 				local type = shape:type()
-				local line = {
+				graphics:pushColor(
 					self.body:getMass() > 0 and 63 or 255,
 					v:isSensor() and 63 or 255,
 					self.platform and 63 or 255
-				}
-				local fill = {
-					line[1],
-					line[2],
-					line[3],
-					31
-				}
-				love.graphics.setColor(line)
+				)
 				if type == "PolygonShape" then
 					love.graphics.polygon("line",self.body:getWorldPoints(shape:getPoints()))
-					love.graphics.setColor(fill)
+					graphics:pushColor(255,255,255,31)
 					love.graphics.polygon("fill",self.body:getWorldPoints(shape:getPoints()))
+					graphics:popColor()
 				elseif type == "CircleShape" then
 					local x,y = self.body:getWorldPoints(shape:getPoint())
 					love.graphics.ellipse("line",x,y,shape:getRadius())
-					love.graphics.setColor(fill)
+					graphics:pushColor(255,255,255,31)
 					love.graphics.ellipse("fill",x,y,shape:getRadius())
+					graphics:popColor()
 				elseif type == "ChainShape" or type == "EdgeShape" then
 					love.graphics.line(self.body:getWorldPoints(shape:getPoints()))
 				end
+				graphics:popColor()
 			end
 
-			love.graphics.setColor(255,255,255)
 			love.graphics.ellipse("fill",bx,by,2)
 		end
 
@@ -71,34 +71,31 @@ local Rigid = Instance:class("Rigid",3)({
 		else if self.lifespan then
 				self.lifespan = self.lifespan-dt
 			end
-			if self.image and not self.world.debounce[self.image] then
+			if self.image and not self.map.debounce[self.image] then
 				self.image:update(dt)
 			end
-			self.postUpdate:fire(dt)
 		end
 	end,
 	destroy = function(self,super)
+		if self.map then
+			self.map:rem(self)
+		end
 		if self.body then
-			for _,c in pairs(self.body:getContactList()) do
-				local a,b = c:getFixtures()
-				self.world:callback("endContact",a,b,c)
-			end
-			local world = self.world
-			world.bodyToRigid[self.body] = nil
-			world.layer[world.bodies[self]][self] = nil
-			world.bodies[self] = nil
+			self:applyFixture(function(v)
+				v:setSensor(true)
+			end)
+
 			self.body:destroy()
 		end
 		super.destroy(self)
 	end,
-	postUpdate = Instance:event(),
 	beginContact = Instance:event(),
 	endContact = Instance:event(),
 	preSolve = Instance:event(),
 	postSolve = Instance:event()
-})
+}
 
-local Projectile = Rigid:class("Projectile",3)({
+local Projectile = Rigid:class("Projectile",3){
 	thrust = Vector2:new(),
 	force = Vector2:new(),
 	fixedAngle = nil,
@@ -108,8 +105,6 @@ local Projectile = Rigid:class("Projectile",3)({
 	whitelist = false,
 	new = function(self,super)
 		self.beginContact:connect(function(hit,fixture,col)
-			col:setEnabled(false)
-
 			if fixture:isSensor() then return end
 			-- Sensor hit.
 
@@ -130,15 +125,6 @@ local Projectile = Rigid:class("Projectile",3)({
 
 			self.projectileHit:fire(hit,fixture,col)
 		end)
-		self.endContact:connect(function(hit,fixture,col)
-			col:setEnabled(false)
-		end)
-		self.preSolve:connect(function(hit,fixture,col)
-			col:setEnabled(false)
-		end)
-		self.postSolve:connect(function(hit,fixture,col)
-			col:setEnabled(false)
-		end)
 	end,
 	update = function(self,super,dt)
 		if self.body then
@@ -156,9 +142,9 @@ local Projectile = Rigid:class("Projectile",3)({
 		super.update(self,dt)
 	end,
 	projectileHit = Instance:event()
-})
+}
 
-local Entity = Rigid:class("Entity",3)({
+local Entity = Rigid:class("Entity",3){
 	motion = 0,
 	momentum = 0,
 	acceleration = 0.4,
@@ -179,6 +165,7 @@ local Entity = Rigid:class("Entity",3)({
 		jump = {},
 		fall = {}
 	},
+	chatList = {},
 	new = function(self,super)
 		local function check(hit,fixture,col)
 			if hit:is("Rigid",false) and not self.ground[col] and col:isEnabled() then
@@ -266,11 +253,44 @@ local Entity = Rigid:class("Entity",3)({
 
 		img.flip = m == 0 and img.flip or m < 0
 	end,
-	update = function(self,super,dt)
-		local m = self.motion
-		if self.run then
-			m = m*self.runMultiplier
+	chat = function(self,super,text,lifespan)
+		local layer = self:getLayer()
+
+		if text then
+			self.map:add(Instance:new("Dialog",function(vself)
+				vself.map = self.map
+				vself.ui = Instance:new("BorderedFrame",function(self)
+					self.fillColor.a = 0
+					self.lineColor.a = 0
+					self.borderImage = content:loadImage("assets/ui/dialog.png")
+					self.borderEdgeSize = 10
+
+					local label = Instance:new("Label",function(self)
+						self.fillColor.a = 0
+						self.lineColor.a = 0
+						self.textWrap = true
+
+						self.offset:set(10,10,-20,-20)
+						self.scale:set(0,0,1,1)
+						self:setText(text,256)
+					end)
+					self:add(label)
+
+					local font = label.font.font
+					local height = font:getHeight()
+					local border = 20
+					local width,list = font:getWrap(label.text.abs,300-border)
+
+					self.offset:set(0,0,width+border,#list*height+border)
+
+					vself.lifespan = (lifespan or 5)+label.text.abs:len()/256
+				end)
+				vself.rigid = self
+			end),self:getLayer())
 		end
+	end,
+	update = function(self,super,dt)
+		local m = self.motion*(self.run and self.runMultiplier or 1)
 
 		self.momentum = lemon.lerp(self.momentum,m,self.acceleration/2)
 
@@ -282,6 +302,7 @@ local Entity = Rigid:class("Entity",3)({
 			local x = self.body:getLinearVelocity()
 
 			v = m < 0 and max(min(0,v-x),v) or min(max(0,v-x),v)
+
 			if not self:isGrounded() then
 				v = v/meter/a*2
 			end
@@ -291,4 +312,4 @@ local Entity = Rigid:class("Entity",3)({
 		self:animate()
 		super.update(self,dt)
 	end
-})
+}

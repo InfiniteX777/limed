@@ -13,30 +13,16 @@ local function clamp(r,g,b,a)
 	return r,g,b,a
 end
 
-local function modify(a,b,modifier)
-	local r1,g1,b1,a1 = a.r/255,a.g/255,a.b/255,a.a/255
-	local r2,g2,b2,a2 = b,b,b,1
-	if type(b) == "table" then
-		r2,g2,b2,a2 = b.r/255,b.g/255,b.b/255,b.a/255
-	end
-	if modifier == "mul" then
-		return clamp(
-			r1*r2*255,
-			g1*g2*255,
-			b1*b2*255,
-			a1*a2*255
-		)
-	elseif modifier == "div" then
-		return clamp(
-			r1/r2*255,
-			g1/g2*255,
-			b1/b2*255,
-			a1/a2*255
-		)
-	end
-end
-
-Color = Instance:api({
+Color = Instance:api{
+	new = function(self,r,g,b,a)
+		self:set(r or 0,g or 0,b or 0,a or 255)
+	end,
+	set = function(self,r,g,b,a)
+		self.r = r or self.r
+		self.g = g or self.g
+		self.b = b or self.b
+		self.a = a or self.a
+	end,
 	__add = function(a,b)
 		if type(b) == "table" then
 			return Color:new(clamp(a.r+b.r,a.g+b.g,a.b+b.b,a.a+b.a))
@@ -50,10 +36,10 @@ Color = Instance:api({
 		return Color:new(clamp(a.r-b,a.g-b,a.b-b,a.a))
 	end,
 	__mul = function(a,b)
-		return Color:new(modify(a,b,"mul"))
+		return Color:new(clamp(a.r*b.r/255,a.g*b.g/255,a.b*b.b/255,a.a*b.a/255))
 	end,
 	__div = function(a,b)
-		return Color:new(modify(a,b,"div"))
+		return Color:new(clamp(a.r/b.r*255,a.g/b.g*255,a.b/b.b*255,a.a/b.a*255))
 	end,
 	__pow = function(a,b)
 		if type(b) == "table" then
@@ -67,30 +53,13 @@ Color = Instance:api({
 		end
 		return false
 	end,
-	__index = function(self,i)
-		if properties[i] then
-			return rawget(self,"d"..i)
-		end
-	end,
-	__newindex = function(self,i,v)
-		if properties[i] and self["d"..i] ~= v then
-			rawset(self,i,nil)
-			rawset(self,"d"..i,v)
-		end
-	end,
 	__tostring = function(self)
-		return self.dr..", "..self.dg..", "..self.db..", "..self.da
-	end
-},{
+		return self.r..", "..self.g..", "..self.b..", "..self.a
+	end,
 	components = function(self)
-		return self.dr,self.dg,self.db,self.da
+		return self.r,self.g,self.b,self.a
 	end,
 	clone = function(self)
-		return Color:new(self.dr,self.dg,self.db,self.da)
+		return Color:new(self.r,self.g,self.b,self.a)
 	end
-},function(self,r,g,b,a)
-	self.r = r or 0
-	self.g = g or 0
-	self.b = b or 0
-	self.a = a or 255
-end)
+}

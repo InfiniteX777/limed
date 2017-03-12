@@ -1,7 +1,8 @@
-local max,min,sqrt,ceil,pi,cos,sin = math.max,math.min,math.sqrt,math.ceil,math.pi,math.cos,math.sin
-local insert = table.insert
+local max,min,sqrt,ceil,pi,cos,sin,huge = math.max,math.min,math.sqrt,math.ceil,math.pi,math.cos,math.sin,math.huge
+local insert,concat = table.insert,table.concat
+local rep,byte,format,dump,char = string.rep,string.byte,string.format,string.dump,string.char
 
-lemon = Instance:api({
+lemon = Instance:api{
 	least = 5.421011185545e-20,
 	clamp = function(a,b,v)
 		return max(a or 0,min(v or 0,b or 0))
@@ -24,13 +25,17 @@ lemon = Instance:api({
 		copy = function(t,to,meta)
 			local n = to or {}
 			for k,v in pairs(t) do
-				if type(v) == "table" and v ~= t then
+				if type(v) == "table" and v ~= t and v ~= to then
 					n[k] = lemon.table.copy(v,nil,meta)
 				else n[k] = v
 				end
 			end
 
-			return meta and setmetatable(n,getmetatable(t)) or n
+			if meta and getmetatable(t) then
+				setmetatable(n,getmetatable(t))
+			end
+
+			return n
 		end,
 		merge = function(a,b,overwrite)
 			for k,v in pairs(b) do
@@ -59,6 +64,58 @@ lemon = Instance:api({
 			end
 
 			return a
+		end,
+		dump = function(t,indent)
+			if indent and type(indent) ~= "number" or indent == nil then
+				indent = 1
+			end
+
+			local s = indent and rep("	",indent) or ""
+			local n = indent and "\n" or ""
+			local code = "{"..n
+			local i = 1
+
+			for k,v in pairs(t) do
+				local a = type(k)
+
+				if a == "number" and i < k then
+					while i < k do
+						code = code..s.."nil,"..n
+						i = i+1
+					end
+				end
+
+				if v ~= t then
+					local b = type(v)
+
+					-- Key
+					code = code..s
+
+					if a == "string" then
+						if k:match("%s") then
+							code = code..'["'..k..'"]'
+						else code = code..k
+						end
+						code = code.."="
+					end
+
+					-- Value
+					if b == "string" then
+						code = code..'"'..v..'"'
+					elseif b == "number" or b == "boolean" then
+						code = code..tostring(v)
+					elseif b == "table" then
+						code = code..lemon.table.dump(v,indent and indent+1)
+					elseif b == "function" then
+						code = code..'loadstring(lemon.string.toString("'..lemon.string.toHex(dump(v))..'"))'
+					end
+
+					code = code..","..n
+					i = i+1
+				end
+			end
+
+			return code:sub(1,#code-(indent and 2 or 1))..n..s:sub(2).."}"
 		end
 	},
 	line = {
@@ -164,4 +221,4 @@ lemon = Instance:api({
 			return l
 		end
 	}
-})
+}

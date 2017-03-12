@@ -1,39 +1,92 @@
 local max = math.max
 
-local Map = Instance:class("Map",4)({
+local function callback(self,name,a,b,col,...)
+	local c = self.bodyToRigid[a:getBody()]
+	local d = self.bodyToRigid[b:getBody()]
+	if c and c:is("Projectile") then
+		col:setEnabled(false)
+	end
+	if d and d:is("Projectile") then
+		col:setEnabled(false)
+	end
+	if c and d then
+		c[name]:fire(d,b,col,...)
+		d[name]:fire(c,a,col,...)
+	end
+end
+
+local superclass = {"Rigid","UI","Dialog"}
+local Map = Instance:class("Map",4){
 	world = nil,
+	speed = 1,
 	layer = {},
-	queue = {},
-	bodies = {},
+	objects = {},
 	bodyToRigid = {},
 	debounce = {},
+	drawPoints = false,
 	new = function(self,super)
 		self.world = love.physics.newWorld(0,0)
 		self.world:setCallbacks(function(a,b,...)
-			self:callback("beginContact",a,b,...)
+			callback(self,"beginContact",a,b,...)
 		end,function(a,b,...)
-			self:callback("endContact",a,b,...)
+			callback(self,"endContact",a,b,...)
 		end,function(a,b,...)
-			self:callback("preSolve",a,b,...)
+			callback(self,"preSolve",a,b,...)
 		end,function(a,b,...)
-			self:callback("postSolve",a,b,...)
+			callback(self,"postSolve",a,b,...)
 		end)
 	end,
-	callback = function(self,super,callback,a,b,...)
-		local c = self.bodyToRigid[a:getBody()]
-		local d = self.bodyToRigid[b:getBody()]
-		if c and d then
-			c[callback]:fire(d,b,...)
-			d[callback]:fire(c,a,...)
+	add = function(self,super,object,layer)
+		local layer = layer or 0
+
+		if layer < 0 then return end
+
+		self.objects[object] = layer
+
+		if object:is("Rigid") then
+			self.bodyToRigid[object.body] = object
 		end
+
+		for _,v in pairs(superclass) do
+			if object:is(v) then
+				lemon.table.init(self.layer,layer,v)[object] = true
+				break
+			end
+		end
+
+		return object
 	end,
-	add = function(self,super,rigid,layer)
-		self.bodies[rigid] = layer
-		self.bodyToRigid[rigid.body] = rigid
+	rem = function(self,super,object)
+		if object:is("Rigid") and object.body then
+			for _,c in pairs(object.body:getContactList()) do
+				local a,b = c:getFixtures()
+				callback(self,"endContact",a,b,c)
+			end
 
-		lemon.table.init(self.layer,layer)[rigid] = true
+			self.bodyToRigid[object.body] = nil
+		end
 
-		return rigid
+		for _,v in pairs(superclass) do
+			if object:is(v) then
+				self.layer[self.objects[object]][v][object] = nil
+				break
+			end
+		end
+		self.objects[object] = nil
+	end,
+	indentLayer = function(self,super,layer)
+		if layer < 0 then return end
+		local t = {}
+		for k,v in pairs(self.layer) do
+			if k < layer then
+				t[k] = v
+			elseif k == layer then
+				t[k] = {}
+			else t[k+1] = v
+			end
+		end
+
+		self.layer = t
 	end,
 	setBackground = function(self,super,layer,image,x,y)
 		local t = lemon.table.init(self.layer,layer,"background")
@@ -41,21 +94,9 @@ local Map = Instance:class("Map",4)({
 		t.x = x
 		t.y = y
 	end,
-	entityShape = function(self,super,x,y)
-		local r = max(0,y-x)/2
-
-		return love.physics.newPolygonShape(
-			-x/2,-r,
-			0,-y/2,
-			x/2,-r,
-			x/2,r,
-			0,y/2,
-			-x/2,r
-		)
-	end,
 	rigid = function(self,super,layer,body,image)
 		local rigid = Instance:new("Rigid")
-		rigid.world = self
+		rigid.map = self
 		rigid.body = body
 		rigid.image = image
 
@@ -63,7 +104,7 @@ local Map = Instance:class("Map",4)({
 	end,
 	projectile = function(self,super,layer,body,image,source)
 		local projectile = Instance:new("Projectile")
-		projectile.world = self
+		projectile.map = self
 		projectile.body = body
 		projectile.image = image
 		projectile.source = source
@@ -75,21 +116,22 @@ local Map = Instance:class("Map",4)({
 	end,
 	entity = function(self,super,layer,body,image)
 		local entity = Instance:new("Entity")
-		entity.world = self
+		entity.map = self
 		entity.body = body
 		entity.image = image
 
 		-- Setup for Common Entity Properties
 		body:setFixedRotation(true)
+		body:setBullet(true)
 		body:setMass(1)
-		for k,v in pairs(body:getFixtureList()) do
+		entity:applyFixture(function(v)
 			v:setGroupIndex(-1)
-			v:setFriction(1)
-		end
+			v:setFriction(0.8)
+		end)
 
 		return self:add(entity,layer)
 	end,
-	polyline = function(self,super,layer,image,static,a,b,...)
+	polyline = function(self,super,static,a,b,...)
 		local l = {...}
 		if type(l[1]) == "table" then
 			l = l[1]
@@ -97,18 +139,15 @@ local Map = Instance:class("Map",4)({
 		if #l%2 == 1 or #l < 4 then return end
 
 		local body = love.physics.newBody(self.world,a,b,static and "static" or "dynamic")
-		local shape
 
 		if #l > 4 then
-			shape = love.physics.newChainShape(false,l)
-		else shape = love.physics.newEdgeShape(unpack(l))
+			love.physics.newFixture(body,love.physics.newChainShape(false,l))
+		else love.physics.newFixture(body,love.physics.newEdgeShape(unpack(l)))
 		end
 
-		local fixture = love.physics.newFixture(body,shape)
-
-		return self:rigid(layer,body,image),fixture
+		return body
 	end,
-	polygon = function(self,super,layer,image,static,a,b,...)
+	polygon = function(self,super,static,a,b,...)
 		local l = {...}
 		if type(l[1]) == "table" then
 			l = l[1]
@@ -120,28 +159,26 @@ local Map = Instance:class("Map",4)({
 
 		local fixture = love.physics.newFixture(body,shape)
 
-		return self:rigid(layer,body,image),fixture
+		return body
 	end,
-	ellipse = function(self,super,layer,image,static,a,b,c,d,s)
+	ellipse = function(self,super,static,a,b,c,d,s)
 		local body = love.physics.newBody(self.world,a,b,static and "static" or "dynamic")
 
 		local d = d or c
 		if c == d and not s then
 			love.physics.newFixture(body,love.physics.newCircleShape(c))
-		else local ellipse = lemon.ellipse.toPoly(c,d,s)
-			for k,v in pairs(ellipse) do
+		else for k,v in pairs(lemon.ellipse.toPoly(c,d,s)) do
 				love.physics.newFixture(body,love.physics.newPolygonShape(v))
 			end
 		end
 
-		return self:rigid(layer,body,image),unpack(body:getFixtureList())
+		return body
 	end,
-	rectangle = function(self,super,layer,image,static,a,b,c,d)
+	rectangle = function(self,super,static,a,b,c,d)
 		local body = love.physics.newBody(self.world,a,b,static and "static" or "dynamic")
-		local shape = love.physics.newRectangleShape(c,d)
-		local fixture = love.physics.newFixture(body,shape)
+		love.physics.newFixture(body,love.physics.newRectangleShape(c,d))
 
-		return self:rigid(layer,body,image),fixture
+		return body
 	end,
 	postUpdate = function(self,super,...)
 		for _,v in pairs({...}) do
@@ -151,34 +188,39 @@ local Map = Instance:class("Map",4)({
 	draw = function(self,super,x,y,angle,...)
 		love.graphics.push()
 		love.graphics.rotate(angle)
-		for _,v in pairs(self.layer) do
-			for v,_ in pairs(v) do
-				v:draw(x,y,0,...)
+		for _,layer in pairs(self.layer) do
+			for _,class in pairs(superclass) do
+				if layer[class] then
+					for v,_ in pairs(layer[class]) do
+						v:draw(x,y,0,...)
+					end
+				end
 			end
 		end
 		love.graphics.pop()
 	end,
 	update = function(self,super,dt)
+		dt = dt*self.speed
 		self.world:update(dt)
 		for _,layer in pairs(self.layer) do
-			for v,_ in pairs(layer) do
-				v:update(dt)
-				if v.image then
-					self.debounce[v.image] = true
+			for _,class in pairs(superclass) do
+				if layer[class] then
+					for v,_ in pairs(layer[class]) do
+						v:update(dt)
+						if v.image then
+							self.debounce[v.image] = true
+						end
+					end
 				end
 			end
-		end
-		for v,_ in pairs(self.queue) do
-			v()
-			self.queue[v] = nil
 		end
 		self.debounce = {}
 	end,
 	destroy = function(self,super)
-		for v,_ in pairs(self.bodies) do
+		for v,_ in pairs(self.objects) do
 			v:destroy()
 		end
 		self.world:destroy()
 		super.destroy(self)
 	end
-})
+}
